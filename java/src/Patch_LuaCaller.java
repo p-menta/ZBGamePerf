@@ -2,7 +2,7 @@ package me.zed_0xff.zb_lua_perf_mon;
 
 import java.util.concurrent.Callable;
 
-import me.zed_0xff.zombie_buddy.Patch;
+import me.zed_0xff.zombie_buddy.annotations.Patch;
 import se.krka.kahlua.integration.LuaCaller;
 
 public class Patch_LuaCaller {

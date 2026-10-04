@@ -3,6 +3,10 @@
 *.class
 *.xcf
 
+.gradle
+.project
+.settings
+
 build
 tmp
 

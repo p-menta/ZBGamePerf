@@ -1,11 +1,19 @@
 name=ZBLuaPerfMon
 description=Lua Performance Monitor
 id=ZBLuaPerfMon
-author=Zed
-url=https://github.com/zed-0xff
 poster=preview.png
 
+author=Zed
+url=https://github.com/zed-0xff/ZBLuaPerfMon
+patreon=https://patreon.com/zed_0xff
+
 require=\ZombieBuddy
-javaJarFile=media/java/client/ZBLuaPerfMon.jar
+
 javaPkgName=me.zed_0xff.zb_lua_perf_mon
+
+javaJarFile=media/java/client/ZBLuaPerfMon-2x.jar
 ZBVersionMin=1.6.0
+ZBVersionMax=2.99.99
+
+javaJarFile1=media/java/client/ZBLuaPerfMon.jar
+ZBVersionMin1=3.0.0

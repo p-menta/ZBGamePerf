@@ -1,6 +1,6 @@
 package me.zed_0xff.zb_lua_perf_mon;
 
-import me.zed_0xff.zombie_buddy.Patch;
+import me.zed_0xff.zombie_buddy.annotations.Patch;
 
 @Patch(className = "zombie.core.Core", methodName = "ResetLua")
 public class Patch_Core {
