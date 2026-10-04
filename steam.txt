@@ -31,8 +31,7 @@ ZBLuaPerfMon hooks into the game's Lua execution engine to track the execution t
 [url=https://github.com/zed-0xff/ZombieBuddy]ZombieBuddy Framework[/url]
 
 [b]☕ Support the Developer:[/b]
-If you find this mod useful, consider supporting the developer with a coffee:
-[url=https://ko-fi.com/zed_0xff][img]https://i.imgur.com/Utx6OIH.png[/img][/url]
+[url=https://patreon.com/zed_0xff][img]https://cdn.jsdelivr.net/gh/zed-0xff/ZombieBuddy@master/patreon.png[/img][/url]
 
 [b]⚠️ Disclaimer:[/b]
 This mod modifies core game Lua execution behavior. While designed for performance monitoring, the overhead of tracking every Lua call may slightly impact game performance when enabled. Use at your own risk.
