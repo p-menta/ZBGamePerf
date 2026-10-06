@@ -71,7 +71,6 @@ public class ZBGamePerf {
         osdEnabled = enabled;
         if (!enabled) {
             osdMode = 0;
-            PerformanceMonitor.reset();
         } else if (osdMode == 0) {
             osdMode = 1;
         }
@@ -79,12 +78,7 @@ public class ZBGamePerf {
 
     public static void setOSDMode(int mode) {
         osdMode = (mode >= 0 && mode <= 3) ? mode : 0;
-        if (osdMode == 0) {
-            osdEnabled = false;
-            PerformanceMonitor.reset();
-        } else {
-            osdEnabled = true;
-        }
+        osdEnabled = (osdMode != 0);
     }
 
     public static int getOSDMode() {
@@ -93,13 +87,12 @@ public class ZBGamePerf {
 
     public static int cycleOSDMode() {
         osdMode = (osdMode + 1) % 4;
-        if (osdMode == 0) {
-            osdEnabled = false;
-            PerformanceMonitor.reset();
-        } else {
-            osdEnabled = true;
-        }
+        osdEnabled = (osdMode != 0);
         return osdMode;
+    }
+
+    public static void resetStats() {
+        PerformanceMonitor.reset();
     }
 
     public static void setLogWhenOSDOff(boolean enabled) {
