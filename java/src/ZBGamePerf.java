@@ -1,9 +1,9 @@
-package me.zed_0xff.zb_lua_perf_mon;
+package me.p_menta.zb_game_perf;
 
 import me.zed_0xff.zombie_buddy.Exposer;
 
 @Exposer.LuaClass
-public class ZBLuaPerfMon {
+public class ZBGamePerf {
     public static int osdX = 0;
     public static int osdY = -1;
     public static float osdAlpha = 0.7f;

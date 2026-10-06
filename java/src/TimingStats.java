@@ -1,4 +1,4 @@
-package me.zed_0xff.zb_lua_perf_mon;
+package me.p_menta.zb_game_perf;
 
 public class TimingStats {
     private static final long BUCKET_TIME_NS = 50_000_000L; // Each bucket represents 50ms in nanoseconds

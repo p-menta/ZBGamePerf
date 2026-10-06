@@ -1,4 +1,4 @@
-package me.zed_0xff.zb_lua_perf_mon;
+package me.p_menta.zb_game_perf;
 
 import zombie.core.Core;
 import zombie.core.SpriteRenderer;
@@ -69,7 +69,7 @@ public class PerfRenderer {
 
     public static void render() {
         // Don't render if OSD is disabled
-        if (!ZBLuaPerfMon.osdEnabled) {
+        if (!ZBGamePerf.osdEnabled) {
             return;
         }
 
@@ -98,16 +98,16 @@ public class PerfRenderer {
 
         // Check if we need to update based on update interval
         long currentTime = System.nanoTime();
-        long updateIntervalNS = ZBLuaPerfMon.osdUpdateIntervalMS * 1_000_000L; // Convert ms to ns
-        boolean shouldUpdate = ((currentTime - lastUpdateTime) >= updateIntervalNS) && !ZBLuaPerfMon.osdFrozen;
+        long updateIntervalNS = ZBGamePerf.osdUpdateIntervalMS * 1_000_000L; // Convert ms to ns
+        boolean shouldUpdate = ((currentTime - lastUpdateTime) >= updateIntervalNS) && !ZBGamePerf.osdFrozen;
 
-        // Get parameters from ZBLuaPerfMon
-        int topN = ZBLuaPerfMon.osdTopN;
-        long windowDurationMS = ZBLuaPerfMon.osdWindowMS;
-        float alpha = ZBLuaPerfMon.osdAlpha;
-        float backgroundAlpha = ZBLuaPerfMon.osdBackgroundAlpha;
-        int x0 = ZBLuaPerfMon.osdX;
-        int y0 = ZBLuaPerfMon.osdY;
+        // Get parameters from ZBGamePerf
+        int topN = ZBGamePerf.osdTopN;
+        long windowDurationMS = ZBGamePerf.osdWindowMS;
+        float alpha = ZBGamePerf.osdAlpha;
+        float backgroundAlpha = ZBGamePerf.osdBackgroundAlpha;
+        int x0 = ZBGamePerf.osdX;
+        int y0 = ZBGamePerf.osdY;
 
         var font = UIFont.CodeSmall;
         var scrH = core.getScreenHeight();
@@ -169,7 +169,7 @@ public class PerfRenderer {
     // Get top N calls for rendering (returns a list of formatted call data)
     public static java.util.List<FormattedCall> getTopCalls(int topN, long windowDurationMS) {
         java.util.List<FormattedCall> result = new java.util.ArrayList<>();
-        double minTimeMS = ZBLuaPerfMon.osdMinTimeMS;
+        double minTimeMS = ZBGamePerf.osdMinTimeMS;
         int[] currentMaxPrefixWidth = {0}; // Use array to allow modification in lambda
         
         PerformanceMonitor.getTopEntries(windowDurationMS, topN)

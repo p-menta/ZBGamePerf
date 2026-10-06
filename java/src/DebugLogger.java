@@ -1,4 +1,4 @@
-package me.zed_0xff.zb_lua_perf_mon;
+package me.p_menta.zb_game_perf;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -11,7 +11,7 @@ import zombie.ZomboidFileSystem;
 public class DebugLogger {
     private static PrintWriter logWriter = null;
     private static final Object lock = new Object();
-    private static final String LOG_FILE = "ZBLuaPerfMon_debug.log";
+    private static final String LOG_FILE = "ZBGamePerf_debug.log";
     
     private static PrintWriter getWriter() {
         if (logWriter == null) {
@@ -27,7 +27,7 @@ public class DebugLogger {
                         logWriter = new PrintWriter(new FileWriter(logFile, false), false);
                     } catch (IOException e) {
                         // Fallback to System.out if file write fails
-                        System.err.println("[ZBLuaPerfMon] Failed to open debug log file: " + e.getMessage());
+                        System.err.println("[ZBGamePerf] Failed to open debug log file: " + e.getMessage());
                         return null;
                     }
                 }

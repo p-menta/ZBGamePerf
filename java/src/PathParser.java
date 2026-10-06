@@ -1,4 +1,4 @@
-package me.zed_0xff.zb_lua_perf_mon;
+package me.p_menta.zb_game_perf;
 
 import zombie.ZomboidFileSystem;
 import zombie.core.znet.SteamWorkshop;

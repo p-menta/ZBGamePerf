@@ -1,5 +1,5 @@
-local MOD_ID   = "ZBLuaPerfMon"
-local MOD_NAME = "LuaPerfMon"
+local MOD_ID   = "ZBGamePerf"
+local MOD_NAME = "ZBGamePerf"
 
 local config = {
     osdX                     = nil,
@@ -89,7 +89,7 @@ options:addTitle("Log")
 config.logEnabled               = options:addTickBox("logEnabled", "Enable Logging", false, "Enable or disable console logging of performance statistics")
 config.logWhenOSDOff            = options:addTickBox("logWhenOSDOff", "Log When OSD Off", false, "Continue writing logs even when OSD is disabled (default: off)")
 config.logIntervalSeconds       = options:addSlider( "logIntervalSeconds", "Log Interval (seconds)", 1, 60, 1, 5, "How often to log performance statistics")
-config.trackInternalPerformance = options:addTickBox("trackInternalPerformance", "Track LuaPerfMon Performance", false, "Track performance of the monitoring system itself")
+config.trackInternalPerformance = options:addTickBox("trackInternalPerformance", "Track ZBGamePerf Performance", false, "Track performance of the monitoring system itself")
 
 
 -- Override the apply function to update Java values
@@ -98,55 +98,55 @@ options.apply = function(self)
     if config.osdX then
         local xValue = tonumber(config.osdX:getValue())
         if xValue then
-            ZBLuaPerfMon.setOSDRenderX(xValue)
+            ZBGamePerf.setOSDRenderX(xValue)
         end
     end
     if config.osdY then
         local yValue = tonumber(config.osdY:getValue())
         if yValue then
-            ZBLuaPerfMon.setOSDRenderY(yValue)
+            ZBGamePerf.setOSDRenderY(yValue)
         end
     end
     if config.osdAlpha then
-        ZBLuaPerfMon.setOSDAlpha(config.osdAlpha:getValue())
+        ZBGamePerf.setOSDAlpha(config.osdAlpha:getValue())
     end
     if config.osdBackgroundAlpha then
-        ZBLuaPerfMon.setOSDBackgroundAlpha(config.osdBackgroundAlpha:getValue())
+        ZBGamePerf.setOSDBackgroundAlpha(config.osdBackgroundAlpha:getValue())
     end
     if config.osdWindowMS then
-        ZBLuaPerfMon.setOSDWindowMS(config.osdWindowMS:getValue())
+        ZBGamePerf.setOSDWindowMS(config.osdWindowMS:getValue())
     end
     if config.osdUpdateIntervalMS then
-        ZBLuaPerfMon.setOSDUpdateIntervalMS(config.osdUpdateIntervalMS:getValue())
+        ZBGamePerf.setOSDUpdateIntervalMS(config.osdUpdateIntervalMS:getValue())
     end
     if config.osdTopN then
-        ZBLuaPerfMon.setOSDTopN(config.osdTopN:getValue())
+        ZBGamePerf.setOSDTopN(config.osdTopN:getValue())
     end
     if config.osdMinTimeMS then
         local minTimeValue = tonumber(config.osdMinTimeMS:getValue())
         if minTimeValue then
-            ZBLuaPerfMon.setOSDMinTimeMS(minTimeValue)
+            ZBGamePerf.setOSDMinTimeMS(minTimeValue)
         end
     end
     if config.excludeGameEntries then
-        ZBLuaPerfMon.setExcludeGameEntries(config.excludeGameEntries:getValue())
+        ZBGamePerf.setExcludeGameEntries(config.excludeGameEntries:getValue())
     end
     
     -- Apply logging settings
     if config.logEnabled then
-        ZBLuaPerfMon.setLogEnabled(config.logEnabled:getValue())
+        ZBGamePerf.setLogEnabled(config.logEnabled:getValue())
     end
     if config.logWhenOSDOff then
-        ZBLuaPerfMon.setLogWhenOSDOff(config.logWhenOSDOff:getValue())
+        ZBGamePerf.setLogWhenOSDOff(config.logWhenOSDOff:getValue())
     end
     if config.logIntervalSeconds then
-        ZBLuaPerfMon.setLogIntervalSeconds(config.logIntervalSeconds:getValue())
+        ZBGamePerf.setLogIntervalSeconds(config.logIntervalSeconds:getValue())
     end
     if config.minTimeMicroseconds then
-        ZBLuaPerfMon.setMinTimeMicroseconds(config.minTimeMicroseconds:getValue())
+        ZBGamePerf.setMinTimeMicroseconds(config.minTimeMicroseconds:getValue())
     end
     if config.trackInternalPerformance then
-        ZBLuaPerfMon.setTrackInternalPerformance(config.trackInternalPerformance:getValue())
+        ZBGamePerf.setTrackInternalPerformance(config.trackInternalPerformance:getValue())
     end
     
     -- Apply keybindings
@@ -154,14 +154,14 @@ options.apply = function(self)
         local keyCode = config.toggleOSDKey:getValue()
         if keyCode then
             -- Register the keybinding with the core
-            getCore():addKeyBinding("Toggle LuaPerfMon OSD", tonumber(keyCode) or 0, 0, false, false, false)
+            getCore():addKeyBinding("Toggle ZBGamePerf OSD", tonumber(keyCode) or 0, 0, false, false, false)
         end
     end
     if config.freezeOSDKey then
         local keyCode = config.freezeOSDKey:getValue()
         if keyCode then
             -- Register the keybinding with the core
-            getCore():addKeyBinding("Freeze LuaPerfMon OSD", tonumber(keyCode) or 0, 0, false, false, false)
+            getCore():addKeyBinding("Freeze ZBGamePerf OSD", tonumber(keyCode) or 0, 0, false, false, false)
         end
     end
 end

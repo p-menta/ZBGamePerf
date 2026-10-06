@@ -1,4 +1,4 @@
-package me.zed_0xff.zb_lua_perf_mon;
+package me.p_menta.zb_game_perf;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Set;
@@ -83,7 +83,7 @@ public class PerformanceMonitor {
                 int slowKey_ = name_.hashCode(); // hash of function "filename:line" - slower, but unique
                 
                 // Check if this is a GAME entry and should be excluded (only check once per unique function)
-                if (ZBLuaPerfMon.excludeGameEntries) {
+                if (ZBGamePerf.excludeGameEntries) {
                     FileInfo info = PathParser.getFileInfo(name_);
                     if (info.prefix == FilePrefix.GAME) {
                         // Mark this slowKey as excluded and return a sentinel value
@@ -156,7 +156,7 @@ public class PerformanceMonitor {
         }
         
         // Skip logging if OSD is off and logWhenOSDOff is false
-        if (!ZBLuaPerfMon.osdEnabled && !ZBLuaPerfMon.logWhenOSDOff) {
+        if (!ZBGamePerf.osdEnabled && !ZBGamePerf.logWhenOSDOff) {
             return;
         }
         
@@ -188,11 +188,11 @@ public class PerformanceMonitor {
             windowDurationMS = 1000;
         }
         
-        System.out.println("[ZBLuaPerfMon] ========== Statistics (top 50 by total time in last " + windowDurationMS + "ms window) ==========");
+        System.out.println("[ZBGamePerf] ========== Statistics (top 50 by total time in last " + windowDurationMS + "ms window) ==========");
         
         // Print header once
-        System.out.println("[ZBLuaPerfMon] Type      Total(ms)  Avg(ms)    Min(ms)    Max(ms)    Count  File:Line");
-        System.out.println("[ZBLuaPerfMon] ----------------------------------------------------------------------");
+        System.out.println("[ZBGamePerf] Type      Total(ms)  Avg(ms)    Min(ms)    Max(ms)    Count  File:Line");
+        System.out.println("[ZBGamePerf] ----------------------------------------------------------------------");
         
         // Get top entries and print them
         getTopEntries(windowDurationMS, 50)
@@ -214,7 +214,7 @@ public class PerformanceMonitor {
                 
                 // Print just the values (no header labels) using window stats
                 System.out.println(String.format(
-                    "[ZBLuaPerfMon] %s %9.3f  %9.3f  %9.3f  %9.3f  %5d  %s",
+                    "[ZBGamePerf] %s %9.3f  %9.3f  %9.3f  %9.3f  %5d  %s",
                     paddedType,
                     windowStats.getTotalSumMs(),
                     windowStats.getAverageMs(),
@@ -224,7 +224,7 @@ public class PerformanceMonitor {
                     fileDisplay
                 ));
             });
-        System.out.println("[ZBLuaPerfMon] =============================================================");
+        System.out.println("[ZBGamePerf] =============================================================");
     }
     
     // Resolve simple key (filename:line) to FileInfo with path parsing

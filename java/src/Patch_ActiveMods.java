@@ -1,6 +1,6 @@
-package me.zed_0xff.zb_lua_perf_mon;
+package me.p_menta.zb_game_perf;
 
-import me.zed_0xff.zombie_buddy.annotations.Patch;
+import me.zed_0xff.zombie_buddy.Patch;
 
 // @Patch(className = "zombie.modding.ActiveMods", methodName = "renderUI")
 // public class Patch_ActiveMods {

@@ -1,8 +1,8 @@
-package me.zed_0xff.zb_lua_perf_mon;
+package me.p_menta.zb_game_perf;
 
 import java.util.concurrent.Callable;
 
-import me.zed_0xff.zombie_buddy.annotations.Patch;
+import me.zed_0xff.zombie_buddy.Patch;
 import se.krka.kahlua.integration.LuaCaller;
 
 public class Patch_LuaCaller {
@@ -23,7 +23,7 @@ public class Patch_LuaCaller {
         // - Logging is enabled (for console output)
         // Note: logWhenOSDOff only affects whether logs are written when OSD is off,
         // but statistics gathering is controlled by logEnabled itself
-        return ZBLuaPerfMon.osdEnabled || PerformanceMonitor.logEnabled;
+        return ZBGamePerf.osdEnabled || PerformanceMonitor.logEnabled;
     }
 
     @Patch(className = "se.krka.kahlua.integration.LuaCaller", methodName="pcall")
