@@ -7,5 +7,6 @@ public class Patch_UITransition {
     @Patch.OnEnter
     public static void enter() {
         PerfRenderer.render();
+        ModDataRenderer.render();
     }
 }
