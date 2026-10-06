@@ -8,5 +8,6 @@ public class Patch_UITransition {
     public static void enter() {
         PerfRenderer.render();
         ModDataRenderer.render();
+        CommandRenderer.render();
     }
 }

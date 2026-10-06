@@ -113,9 +113,32 @@ public class ZBGamePerf {
         return modDataOsdEnabled;
     }
 
+    public static int commandOsdMode = 0; // 0 = Off, 1 = TX & RX, 2 = TX only, 3 = RX only
+    public static boolean commandOsdEnabled = false;
+
+    public static int cycleCommandMode() {
+        commandOsdMode = (commandOsdMode + 1) % 4;
+        commandOsdEnabled = (commandOsdMode != 0);
+        return commandOsdMode;
+    }
+
+    public static void setCommandOsdMode(int mode) {
+        commandOsdMode = (mode >= 0 && mode <= 3) ? mode : 0;
+        commandOsdEnabled = (commandOsdMode != 0);
+    }
+
+    public static int getCommandOsdMode() {
+        return commandOsdMode;
+    }
+
+    public static boolean getCommandOsdEnabled() {
+        return commandOsdEnabled;
+    }
+
     public static void resetStats() {
         PerformanceMonitor.reset();
         ModDataMonitor.reset();
+        CommandMonitor.reset();
     }
 
     public static void setLogWhenOSDOff(boolean enabled) {
