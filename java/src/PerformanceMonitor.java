@@ -305,5 +305,42 @@ public class PerformanceMonitor {
             .collect(java.util.stream.Collectors.toList());
     }
 
+    // Get top entries sorted by total accumulated time (all-time / since monitor enabled)
+    public static java.util.List<StatsEntryWithWindow> getTopEntriesTotal(int limit) {
+        return statsMap.entrySet().stream()
+            .map(entry -> {
+                int key = entry.getKey();
+                TimingStats stats = entry.getValue();
+                if (stats == null || stats.getCount() == 0) {
+                    return null;
+                }
+                String name = slowKeyToName.getOrDefault(key, "unknown");
+                FileInfo info = resolveKeyToFileInfo(name, key);
+                return new StatsEntryWithWindow(info, stats, null);
+            })
+            .filter(entry -> entry != null && entry.stats.getCount() > 0)
+            .sorted((a, b) -> Double.compare(b.stats.getTotalSum(), a.stats.getTotalSum()))
+            .limit(limit)
+            .collect(java.util.stream.Collectors.toList());
+    }
+
+    // Get top entries sorted by total call count (most frequent calls)
+    public static java.util.List<StatsEntryWithWindow> getTopEntriesCount(int limit) {
+        return statsMap.entrySet().stream()
+            .map(entry -> {
+                int key = entry.getKey();
+                TimingStats stats = entry.getValue();
+                if (stats == null || stats.getCount() == 0) {
+                    return null;
+                }
+                String name = slowKeyToName.getOrDefault(key, "unknown");
+                FileInfo info = resolveKeyToFileInfo(name, key);
+                return new StatsEntryWithWindow(info, stats, null);
+            })
+            .filter(entry -> entry != null && entry.stats.getCount() > 0)
+            .sorted((a, b) -> Integer.compare(b.stats.getCount(), a.stats.getCount()))
+            .limit(limit)
+            .collect(java.util.stream.Collectors.toList());
+    }
 }
 

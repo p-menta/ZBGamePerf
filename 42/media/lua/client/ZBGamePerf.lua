@@ -1,6 +1,9 @@
 local function onKeyPressed(key)
-    if getCore():isKey("Toggle ZBGamePerf OSD", key) then
-        ZBGamePerf.toggleOSD()
+    local isCtrl = isKeyDown(Keyboard.KEY_LCONTROL) or isKeyDown(Keyboard.KEY_RCONTROL)
+    if key == Keyboard.KEY_1 and isCtrl then
+        ZBGamePerf.cycleOSDMode()
+    elseif getCore():isKey("Toggle ZBGamePerf OSD", key) then
+        ZBGamePerf.cycleOSDMode()
     elseif getCore():isKey("Freeze ZBGamePerf OSD", key) then
         ZBGamePerf.toggleOSDFreeze()
     end

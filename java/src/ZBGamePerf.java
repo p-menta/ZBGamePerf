@@ -47,7 +47,8 @@ public class ZBGamePerf {
 
     public static int logIntervalSeconds     = 5;
     public static long minTimeMicroseconds   = 10; // 10 microseconds = 10,000 nanoseconds
-    public static boolean osdEnabled         = true;
+    public static int osdMode                = 0; // 0 = Off, 1 = Recent Window, 2 = Total Time, 3 = Call Count
+    public static boolean osdEnabled         = false; // Do not store/render data while closed
     public static boolean osdFrozen          = false;
     public static boolean logWhenOSDOff      = false;
     public static boolean excludeGameEntries = false;
@@ -68,6 +69,37 @@ public class ZBGamePerf {
 
     public static void setOSDEnabled(boolean enabled) {
         osdEnabled = enabled;
+        if (!enabled) {
+            osdMode = 0;
+            PerformanceMonitor.reset();
+        } else if (osdMode == 0) {
+            osdMode = 1;
+        }
+    }
+
+    public static void setOSDMode(int mode) {
+        osdMode = (mode >= 0 && mode <= 3) ? mode : 0;
+        if (osdMode == 0) {
+            osdEnabled = false;
+            PerformanceMonitor.reset();
+        } else {
+            osdEnabled = true;
+        }
+    }
+
+    public static int getOSDMode() {
+        return osdMode;
+    }
+
+    public static int cycleOSDMode() {
+        osdMode = (osdMode + 1) % 4;
+        if (osdMode == 0) {
+            osdEnabled = false;
+            PerformanceMonitor.reset();
+        } else {
+            osdEnabled = true;
+        }
+        return osdMode;
     }
 
     public static void setLogWhenOSDOff(boolean enabled) {
@@ -79,7 +111,7 @@ public class ZBGamePerf {
     }
 
     public static boolean toggleOSD() {
-        osdEnabled = !osdEnabled;
+        cycleOSDMode();
         return osdEnabled;
     }
 

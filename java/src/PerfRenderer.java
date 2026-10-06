@@ -125,7 +125,14 @@ public class PerfRenderer {
             cachedScreenHeight = scrH;
 
             // Pre-format all lines with colors and find longest (expensive operations)
-            String header = "Top " + topN + " Lua Calls (last " + (windowDurationMS / 1000) + "s):";
+            String header;
+            if (ZBGamePerf.osdMode == 3) {
+                header = "Top " + topN + " Lua Calls (Most Calls):";
+            } else if (ZBGamePerf.osdMode == 2) {
+                header = "Top " + topN + " Lua Calls (Total Time):";
+            } else {
+                header = "Top " + topN + " Lua Calls (last " + (windowDurationMS / 1000) + "s):";
+            }
             cachedLines.clear();
             // Add header as first line (white color)
             cachedLines.add(new CachedLine(header, 1.0, 1.0, 1.0));
@@ -172,82 +179,90 @@ public class PerfRenderer {
         double minTimeMS = ZBGamePerf.osdMinTimeMS;
         int[] currentMaxPrefixWidth = {0}; // Use array to allow modification in lambda
         
-        PerformanceMonitor.getTopEntries(windowDurationMS, topN)
-            .forEach(entry -> {
-                FileInfo info = entry.info;
-                TimingStats.WindowStats windowStats = entry.windowStats;
-                double totalMs = windowStats.getTotalSumMs();
-                
-                // Filter out entries below minimum time threshold
-                if (totalMs < minTimeMS) {
-                    return;
-                }
-                
-                // Format time: if > 100ms, convert to seconds with 2 decimal places, otherwise show as ms with 1 decimal
-                // Right-aligned in 8 character column
-                String timeStr = String.format("%8.1fms", totalMs);
-                double r, g, b;
-                if (totalMs > 500.0) {
-                    // > 500ms: slight red
-                    r = 1.0;
-                    g = 0.6;
-                    b = 0.6;
-                } else if (totalMs > 100.0) {
-                    // > 100ms: slight yellow
-                    r = 1.0;
-                    g = 1.0;
-                    b = 0.6;
+        boolean isTotalMode = (ZBGamePerf.osdMode == 2);
+        boolean isCountMode = (ZBGamePerf.osdMode == 3);
+        boolean isCumulative = isTotalMode || isCountMode;
+
+        java.util.List<PerformanceMonitor.StatsEntryWithWindow> entries;
+        if (isCountMode) {
+            entries = PerformanceMonitor.getTopEntriesCount(topN);
+        } else if (isTotalMode) {
+            entries = PerformanceMonitor.getTopEntriesTotal(topN);
+        } else {
+            entries = PerformanceMonitor.getTopEntries(windowDurationMS, topN);
+        }
+
+        entries.forEach(entry -> {
+            FileInfo info = entry.info;
+            double totalMs = isCumulative ? entry.stats.getTotalSum() : entry.windowStats.getTotalSumMs();
+            long count = isCumulative ? entry.stats.getCount() : entry.windowStats.count;
+            
+            // Filter out entries below minimum time threshold (only in windowed/total time modes)
+            if (!isCountMode && totalMs < minTimeMS) {
+                return;
+            }
+            
+            String timeStr = (totalMs >= 1000.0)
+                ? String.format("%7.2fs", totalMs / 1000.0)
+                : String.format("%8.1fms", totalMs);
+
+            double r, g, b;
+            if (isCountMode) {
+                if (count >= 10_000) {
+                    r = 1.0; g = 0.6; b = 0.6;
+                } else if (count >= 1_000) {
+                    r = 1.0; g = 1.0; b = 0.6;
                 } else {
-                    // <= 100ms: white
-                    r = 1.0;
-                    g = 1.0;
-                    b = 1.0;
+                    r = 1.0; g = 1.0; b = 1.0;
                 }
-                
-                // Format count (right-aligned, 5 character column)
-                String countStr = String.format("%5d", windowStats.count);
-                
-                // Extract first folder from path for LMOD/SMOD/WORKSHOP, otherwise use prefix
-                FilePrefix prefix = info.prefix != null ? info.prefix : FilePrefix.UNK;
-                String pathToDisplay = info.relativePath;
-                String prefixStr;
-                
-                if (prefix == FilePrefix.INTERNAL) {
-                    prefixStr = "LuaPerfMon";
-                } else if (prefix == FilePrefix.LMOD || prefix == FilePrefix.SMOD || prefix == FilePrefix.WMOD) {
-                    // Extract first folder from path
-                    String normalizedPath = pathToDisplay.replace('\\', '/');
-                    int firstSlash = normalizedPath.indexOf('/');
-                    if (firstSlash > 0) {
-                        String firstFolder = normalizedPath.substring(0, firstSlash);
-                        // Remove first folder from path
-                        pathToDisplay = normalizedPath.substring(firstSlash + 1);
-                        prefixStr = firstFolder;
-                    } else {
-                        prefixStr = prefix.name();
-                    }
+            } else {
+                if (totalMs > (isTotalMode ? 5000.0 : 500.0)) {
+                    r = 1.0; g = 0.6; b = 0.6;
+                } else if (totalMs > (isTotalMode ? 1000.0 : 100.0)) {
+                    r = 1.0; g = 1.0; b = 0.6;
+                } else {
+                    r = 1.0; g = 1.0; b = 1.0;
+                }
+            }
+            
+            String countStr = String.format("%5d", count);
+            
+            // Extract first folder from path for LMOD/SMOD/WORKSHOP, otherwise use prefix
+            FilePrefix prefix = info.prefix != null ? info.prefix : FilePrefix.UNK;
+            String pathToDisplay = info.relativePath;
+            String prefixStr;
+            
+            if (prefix == FilePrefix.INTERNAL) {
+                prefixStr = "ZBGamePerf";
+            } else if (prefix == FilePrefix.LMOD || prefix == FilePrefix.SMOD || prefix == FilePrefix.WMOD) {
+                String normalizedPath = pathToDisplay.replace('\\', '/');
+                int firstSlash = normalizedPath.indexOf('/');
+                if (firstSlash > 0) {
+                    String firstFolder = normalizedPath.substring(0, firstSlash);
+                    pathToDisplay = normalizedPath.substring(firstSlash + 1);
+                    prefixStr = firstFolder;
                 } else {
                     prefixStr = prefix.name();
                 }
-                
-                // Update max prefix width for this batch
-                int prefixLen = prefixStr.length();
-                if (prefixLen > currentMaxPrefixWidth[0]) {
-                    currentMaxPrefixWidth[0] = prefixLen;
-                }
-                
-                // Format path (truncate if too long)
-                // Don't show line number for internal performance tracking or when line is 0 and path doesn't look like a file
-                String fileDisplay;
-                if (info.line > 0 || (pathToDisplay.contains("/") || pathToDisplay.contains("\\"))) {
-                    fileDisplay = pathToDisplay + ":" + info.line;
-                } else {
-                    fileDisplay = pathToDisplay;
-                }
-                String pathStr = fileDisplay.length() > 80 ? fileDisplay.substring(0, 77) + "..." : fileDisplay;
-                
-                result.add(new FormattedCall(timeStr, countStr, prefixStr, pathStr, r, g, b));
-            });
+            } else {
+                prefixStr = prefix.name();
+            }
+            
+            int prefixLen = prefixStr.length();
+            if (prefixLen > currentMaxPrefixWidth[0]) {
+                currentMaxPrefixWidth[0] = prefixLen;
+            }
+            
+            String fileDisplay;
+            if (info.line > 0 || (pathToDisplay.contains("/") || pathToDisplay.contains("\\"))) {
+                fileDisplay = pathToDisplay + ":" + info.line;
+            } else {
+                fileDisplay = pathToDisplay;
+            }
+            String pathStr = fileDisplay.length() > 80 ? fileDisplay.substring(0, 77) + "..." : fileDisplay;
+            
+            result.add(new FormattedCall(timeStr, countStr, prefixStr, pathStr, r, g, b));
+        });
         
         // Update global max prefix width (remember longest size)
         if (currentMaxPrefixWidth[0] > maxPrefixWidth) {
