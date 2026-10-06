@@ -2,8 +2,10 @@ package me.p_menta.zb_game_perf;
 
 import zombie.core.Core;
 import zombie.core.SpriteRenderer;
+import zombie.input.GameKeyboard;
 import zombie.ui.TextManager;
 import zombie.ui.UIFont;
+import org.lwjglx.input.Keyboard;
 import java.util.List;
 
 public class PerfRenderer {
@@ -67,7 +69,33 @@ public class PerfRenderer {
         }
     }
 
+    private static boolean wasCtrl1Down = false;
+    private static boolean wasCtrl0Down = false;
+
+    private static void checkHotkeys() {
+        try {
+            boolean isCtrl = GameKeyboard.isKeyDown(Keyboard.KEY_LCONTROL) || GameKeyboard.isKeyDown(Keyboard.KEY_RCONTROL);
+            boolean is1 = GameKeyboard.isKeyDown(Keyboard.KEY_1);
+            boolean is0 = GameKeyboard.isKeyDown(Keyboard.KEY_0);
+
+            boolean ctrl1 = isCtrl && is1;
+            if (ctrl1 && !wasCtrl1Down) {
+                ZBGamePerf.cycleOSDMode();
+            }
+            wasCtrl1Down = ctrl1;
+
+            boolean ctrl0 = isCtrl && is0;
+            if (ctrl0 && !wasCtrl0Down) {
+                ZBGamePerf.resetStats();
+            }
+            wasCtrl0Down = ctrl0;
+        } catch (Throwable ignored) {
+        }
+    }
+
     public static void render() {
+        checkHotkeys();
+
         // Don't render if OSD is disabled
         if (!ZBGamePerf.osdEnabled) {
             return;
