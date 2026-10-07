@@ -80,6 +80,7 @@ public class PerfRenderer {
     private static boolean wasCtrl1Down = false;
     private static boolean wasCtrl2Down = false;
     private static boolean wasCtrl3Down = false;
+    private static boolean wasCtrl4Down = false;
     private static boolean wasCtrl0Down = false;
 
     private static void checkHotkeys() {
@@ -88,6 +89,7 @@ public class PerfRenderer {
             boolean is1 = GameKeyboard.isKeyDown(Keyboard.KEY_1);
             boolean is2 = GameKeyboard.isKeyDown(Keyboard.KEY_2);
             boolean is3 = GameKeyboard.isKeyDown(Keyboard.KEY_3);
+            boolean is4 = GameKeyboard.isKeyDown(Keyboard.KEY_4);
             boolean is0 = GameKeyboard.isKeyDown(Keyboard.KEY_0);
 
             boolean ctrl1 = isCtrl && is1;
@@ -107,6 +109,12 @@ public class PerfRenderer {
                 ZBGamePerf.cycleCommandMode();
             }
             wasCtrl3Down = ctrl3;
+
+            boolean ctrl4 = isCtrl && is4;
+            if (ctrl4 && !wasCtrl4Down) {
+                ZBGamePerf.cycleLoadGridSquareMode();
+            }
+            wasCtrl4Down = ctrl4;
 
             boolean ctrl0 = isCtrl && is0;
             if (ctrl0 && !wasCtrl0Down) {

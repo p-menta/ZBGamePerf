@@ -135,10 +135,33 @@ public class ZBGamePerf {
         return commandOsdEnabled;
     }
 
+    public static int loadGridSquareOsdMode = 0; // 0 = Off, 1 = Recent Activity, 2 = Total Time, 3 = Most Calls
+    public static boolean loadGridSquareOsdEnabled = false;
+
+    public static int cycleLoadGridSquareMode() {
+        loadGridSquareOsdMode = (loadGridSquareOsdMode + 1) % 4;
+        loadGridSquareOsdEnabled = (loadGridSquareOsdMode != 0);
+        return loadGridSquareOsdMode;
+    }
+
+    public static void setLoadGridSquareOsdMode(int mode) {
+        loadGridSquareOsdMode = (mode >= 0 && mode <= 3) ? mode : 0;
+        loadGridSquareOsdEnabled = (loadGridSquareOsdMode != 0);
+    }
+
+    public static int getLoadGridSquareOsdMode() {
+        return loadGridSquareOsdMode;
+    }
+
+    public static boolean getLoadGridSquareOsdEnabled() {
+        return loadGridSquareOsdEnabled;
+    }
+
     public static void resetStats() {
         PerformanceMonitor.reset();
         ModDataMonitor.reset();
         CommandMonitor.reset();
+        LoadGridSquareMonitor.reset();
     }
 
     public static void setLogWhenOSDOff(boolean enabled) {

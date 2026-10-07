@@ -9,5 +9,6 @@ public class Patch_UITransition {
         PerfRenderer.render();
         ModDataRenderer.render();
         CommandRenderer.render();
+        LoadGridSquareRenderer.render();
     }
 }

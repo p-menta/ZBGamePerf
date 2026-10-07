@@ -40,6 +40,9 @@ public class Patch_LuaCaller {
             if (duration >= minTimeNS) {
                 recordTime(fun, duration, startTime);
             }
+            if (LoadGridSquareMonitor.isInsideEvent()) {
+                LoadGridSquareMonitor.recordCallback(fun, duration);
+            }
         }
     }
 
@@ -56,6 +59,9 @@ public class Patch_LuaCaller {
             long duration = endTime - startTime;
             if (duration >= minTimeNS) {
                 recordTime(fun, duration, startTime);
+            }
+            if (LoadGridSquareMonitor.isInsideEvent()) {
+                LoadGridSquareMonitor.recordCallback(fun, duration);
             }
         }
     }
