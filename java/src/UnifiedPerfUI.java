@@ -141,7 +141,7 @@ public class UnifiedPerfUI {
         } else if (activeTab == 4) {
             netTabMode = (netTabMode % 2) + 1;
         } else if (activeTab == 5) {
-            serverTabMode = (serverTabMode % 2) + 1;
+            serverTabMode = (serverTabMode % 3) + 1;
         } else if (activeTab == 6) {
             poolsTabMode = (poolsTabMode % 3) + 1;
         }
@@ -166,9 +166,11 @@ public class UnifiedPerfUI {
             if (m == 3) return "Mode: Most Calls";
             return "Mode: Recent Activity";
         } else if (activeTab == 4) {
-            return (m == 2) ? "Mode: Game & VoIP" : "Mode: RakNet & Wire";
+            return (m == 2) ? "Mode: Raw Rates" : "Mode: Network Overview";
         } else if (activeTab == 5) {
-            return (m == 2) ? "Mode: World & Entities" : "Mode: Performance & RAM";
+            if (m == 2) return "Mode: Performance";
+            if (m == 3) return "Mode: Characters & World";
+            return "Mode: All (Overview)";
         } else {
             if (m == 2) return "Mode: Most Reused";
             if (m == 3) return "Mode: Allocations";
@@ -195,11 +197,12 @@ public class UnifiedPerfUI {
             if (m == 3) return "Callbacks sorted by total invocation count";
             return "Callbacks with activity in the last minute";
         } else if (activeTab == 4) {
-            return (m == 2) ? "Game protocol packet rates and VoIP audio bandwidth"
-                            : "RakNet UDP physical wire traffic, latency, loss & resend buffer";
+            return (m == 2) ? "RakNet UDP physical wire traffic, latency, loss & resend buffer"
+                            : "3-column Client vs Server network statistics table & RakNet diagnostics";
         } else if (activeTab == 5) {
-            return (m == 2) ? "Server zombie simulation, animals, loaded cells & desync teleports"
-                            : "Client vs Server FPS, simulation tick duration & JVM RAM usage";
+            if (m == 2) return "Client vs Server JVM memory, FPS and simulation tick period";
+            if (m == 3) return "Client vs Server zombies, animals, loaded cells and desync teleports";
+            return "Complete 3-column table matching native in-game Performance & Characters statistics";
         } else {
             if (m == 2) return "Pools sorted by reuse count (cache hits preventing GC pauses)";
             if (m == 3) return "Pools sorted by fresh object allocations (misses)";
@@ -772,200 +775,209 @@ public class UnifiedPerfUI {
         }
     }
 
+    private static void renderTableHeader(TextManager textMgr, int lx, int rowY, int lw, String title) {
+        SpriteRenderer.instance.renderRect(lx, rowY, lw, 20, 0.13f, 0.16f, 0.22f, 0.9f);
+        textMgr.DrawString(FONT_UI, lx + 16, rowY + 2, title, 1.0, 0.75, 0.35, 1.0);
+        textMgr.DrawString(FONT_UI, lx + 440, rowY + 2, "Client", 1.0, 0.75, 0.35, 1.0);
+        textMgr.DrawString(FONT_UI, lx + 740, rowY + 2, "Server", 1.0, 0.75, 0.35, 1.0);
+    }
+
+    private static void renderTableRow(TextManager textMgr, int lx, int rowY, int lw,
+                                       String label, String clientVal, String serverVal, boolean isEven) {
+        if (isEven) {
+            SpriteRenderer.instance.renderRect(lx, rowY, lw, 19, 0.08f, 0.09f, 0.12f, 0.45f);
+        }
+        textMgr.DrawString(FONT_DATA, lx + 20, rowY + 1, label, 0.85, 0.88, 0.92, 1.0);
+
+        boolean cNil = "nil".equals(clientVal) || "-".equals(clientVal);
+        double cr = cNil ? 0.5 : 0.95;
+        double cg = cNil ? 0.5 : 0.95;
+        double cb = cNil ? 0.5 : 0.95;
+        textMgr.DrawString(FONT_DATA, lx + 440, rowY + 1, clientVal, cr, cg, cb, 1.0);
+
+        boolean sNil = "nil".equals(serverVal) || "-".equals(serverVal) || serverVal.startsWith("No stream");
+        double sr = sNil ? 0.5 : 0.95;
+        double sg = sNil ? 0.5 : 0.95;
+        double sb = sNil ? 0.5 : 0.95;
+        textMgr.DrawString(FONT_DATA, lx + 740, rowY + 1, serverVal, sr, sg, sb, 1.0);
+    }
+
+    private static String fmtNum(double val) {
+        if (val < 0) return "nil";
+        return String.format(java.util.Locale.US, "%d", (long) Math.floor(val));
+    }
+
+    private static String fmtKB(double bytes) {
+        if (bytes < 0) return "nil";
+        return String.format(java.util.Locale.US, "%d", (long) Math.floor(bytes / 1024.0));
+    }
+
+    private static String fmtPct(double pct) {
+        if (pct < 0) return "nil";
+        return String.format(java.util.Locale.US, "%d", (long) Math.floor(pct * 100.0));
+    }
+
     private static void renderNetworkList(TextManager textMgr, int lx, int rowY) {
         ServerNetMonitor.RakNetSnapshot r = ServerNetMonitor.getRakNetSnapshot();
+        int lw = WIN_W - 24;
+
         if (!r.isConnected) {
-            textMgr.DrawString(FONT_DATA, lx, rowY,
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY + 10,
                 "STATUS: Single Player / Not connected to a Multiplayer Server", 0.9, 0.8, 0.4, 1.0);
-            rowY += 22;
-            textMgr.DrawString(FONT_DATA, lx, rowY,
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY + 32,
                 "(Network & RakNet metrics become active when connected to a LAN or Dedicated Server)", 0.6, 0.6, 0.6, 1.0);
             return;
         }
 
         int mode = netTabMode;
         if (mode == 1) {
-            textMgr.DrawString(FONT_DATA, lx, rowY,
+            int row = 0;
+            renderTableHeader(textMgr, lx, rowY, lw, "Network");
+            rowY += 21;
+
+            renderTableRow(textMgr, lx, rowY, lw, "RX (P) :", fmtNum(r.clientGameRxPackets), fmtNum(r.serverGameRxPackets), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "TX (P) :", fmtNum(r.clientGameTxPackets), fmtNum(r.serverGameTxPackets), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "RX (KB) :", fmtKB(r.clientGameRxKb), fmtKB(r.serverGameRxKb), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "TX (KB) :", fmtKB(r.clientGameTxKb), fmtKB(r.serverGameTxKb), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "RAKNET RX (KB) :", fmtKB(r.clientWireRxKb), fmtKB(r.serverWireRxKb), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "RAKNET TX (KB) :", fmtKB(r.clientWireTxKb), fmtKB(r.serverWireTxKb), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "RAKNET Resent (KB) :", fmtKB(r.clientResentKb), fmtKB(r.serverResentKb), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "RAKNET Loss (%) :", fmtPct(r.clientLossPct), fmtPct(r.serverLossPct), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "VOIP RX (KB) :", fmtKB(r.clientVoipRxKb), fmtKB(r.serverVoipRxKb), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "VOIP TX (KB) :", fmtKB(r.clientVoipTxKb), fmtKB(r.serverVoipTxKb), (row++ % 2 == 0));
+            rowY += 19;
+
+            rowY += 6;
+            renderTableHeader(textMgr, lx, rowY, lw, "RakNet Diagnostics");
+            rowY += 21;
+
+            String pingCli = String.format(java.util.Locale.US, "%d ms (Avg: %d, Low: %d)", r.lastPing, r.avgPing, r.lowestPing);
+            renderTableRow(textMgr, lx, rowY, lw, "Ping / Latency :", pingCli, "-", (row++ % 2 == 0));
+            rowY += 19;
+
+            String resendQueue = r.resendMsgs + " msgs in queue";
+            renderTableRow(textMgr, lx, rowY, lw, "Resend Buffer Queue :", resendQueue, "-", (row++ % 2 == 0));
+            rowY += 19;
+
+            String cong = r.isCongested ? "ACTIVE (Throttled)" : "None (Unrestricted)";
+            String congSrv = (r.bpsLimit > 0) ? (ModDataMonitor.formatBytes(r.bpsLimit) + "/s") : "-";
+            renderTableRow(textMgr, lx, rowY, lw, "Congestion Control :", cong, congSrv, (row++ % 2 == 0));
+            rowY += 19;
+        } else {
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY,
                 "--- RAKNET LOW-LEVEL UDP TRANSPORT & PHYSICAL WIRE METRICS ---", 0.35, 0.85, 1.0, 1.0);
             rowY += 22;
 
-            String lossColor = (r.lossLastSec > 0.02) ? "HIGH" : "GOOD";
+            String lossColor = (r.clientLossPct > 0.02) ? "HIGH" : "GOOD";
             String l1 = String.format(java.util.Locale.US,
-                "Latency: %d ms (Avg: %d ms, Lowest: %d ms)     | Packet Loss (1s): %5.2f%% (%s)   | Total Loss: %5.2f%%",
-                r.lastPing, r.avgPing, r.lowestPing, r.lossLastSec * 100.0, lossColor, r.lossTotal * 100.0);
-            textMgr.DrawString(FONT_DATA, lx, rowY, l1, 1.0, 1.0, 1.0, 1.0);
+                "Latency: %d ms (Avg: %d ms, Lowest: %d ms)     | Packet Loss (1s): %5.2f%% (%s)",
+                r.lastPing, r.avgPing, r.lowestPing, r.clientLossPct * 100.0, lossColor);
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY, l1, 1.0, 1.0, 1.0, 1.0);
             rowY += 20;
 
             String l2 = String.format(java.util.Locale.US,
                 "Actual Wire Traffic:  TX %s/s  |  RX %s/s     (Physical UDP bytes on wire)",
-                ModDataMonitor.formatBytes(r.wireTxBytes), ModDataMonitor.formatBytes(r.wireRxBytes));
-            textMgr.DrawString(FONT_DATA, lx, rowY, l2, 0.4, 1.0, 0.5, 1.0);
+                ModDataMonitor.formatBytes((long) r.clientWireTxKb), ModDataMonitor.formatBytes((long) r.clientWireRxKb));
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY, l2, 0.4, 1.0, 0.5, 1.0);
             rowY += 20;
 
             String l3 = String.format(java.util.Locale.US,
                 "Packet Resends:       %s resent      | Resend Queue: %d messages in buffer",
-                ModDataMonitor.formatBytes(r.resendBytes), r.resendMsgs);
-            textMgr.DrawString(FONT_DATA, lx, rowY, l3, (r.resendMsgs > 5 ? 1.0 : 0.8), (r.resendMsgs > 5 ? 0.4 : 0.8), 0.8, 1.0);
+                ModDataMonitor.formatBytes((long) r.clientResentKb), r.resendMsgs);
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY, l3, (r.resendMsgs > 5 ? 1.0 : 0.8), (r.resendMsgs > 5 ? 0.4 : 0.8), 0.8, 1.0);
             rowY += 20;
 
             String cong = r.isCongested ? "ACTIVE (Throttling connection)" : "None (Bandwidth unrestricted)";
             String l4 = String.format(java.util.Locale.US,
                 "Congestion Control:   %s  | Bps Limit: %s",
                 cong, (r.bpsLimit > 0 ? ModDataMonitor.formatBytes(r.bpsLimit) + "/s" : "Unlimited"));
-            textMgr.DrawString(FONT_DATA, lx, rowY, l4, 0.8, 0.85, 0.9, 1.0);
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY, l4, 0.8, 0.85, 0.9, 1.0);
             rowY += 26;
 
-            textMgr.DrawString(FONT_DATA, lx, rowY,
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY,
                 "--- HIGHER LEVEL PROTOCOL OVERVIEW ---", 0.7, 0.75, 0.85, 1.0);
             rowY += 22;
             String l5 = String.format(java.util.Locale.US,
                 "Game Application Packets:  TX: %5.1f pkts/s  |  RX: %5.1f pkts/s",
-                r.gameTxPackets, r.gameRxPackets);
-            textMgr.DrawString(FONT_DATA, lx, rowY, l5, 0.9, 0.9, 0.9, 1.0);
+                r.clientGameTxPackets, r.clientGameRxPackets);
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY, l5, 0.9, 0.9, 0.9, 1.0);
             rowY += 20;
             String l6 = String.format(java.util.Locale.US,
                 "Game Application Bandwidth: TX: %s/s   |  RX: %s/s",
-                ModDataMonitor.formatBytes((long) r.gameTxBytes), ModDataMonitor.formatBytes((long) r.gameRxBytes));
-            textMgr.DrawString(FONT_DATA, lx, rowY, l6, 0.9, 0.9, 0.9, 1.0);
-        } else {
-            textMgr.DrawString(FONT_DATA, lx, rowY,
-                "--- GAME PROTOCOL PACKETS & IN-GAME VOIP METRICS ---", 0.35, 0.85, 1.0, 1.0);
-            rowY += 22;
-
-            String l1 = String.format(java.util.Locale.US,
-                "In-Game VoIP Audio:   TX: %s/s  |  RX: %s/s",
-                ModDataMonitor.formatBytes((long) r.voipTxBytes), ModDataMonitor.formatBytes((long) r.voipRxBytes));
-            textMgr.DrawString(FONT_DATA, lx, rowY, l1, 0.4, 1.0, 0.7, 1.0);
-            rowY += 20;
-
-            String l2 = String.format(java.util.Locale.US,
-                "Game Packets Rate:    TX: %5.1f pkts/s  |  RX: %5.1f pkts/s",
-                r.gameTxPackets, r.gameRxPackets);
-            textMgr.DrawString(FONT_DATA, lx, rowY, l2, 1.0, 1.0, 1.0, 1.0);
-            rowY += 20;
-
-            String l3 = String.format(java.util.Locale.US,
-                "Game Payload Size:    TX: %s/s  |  RX: %s/s",
-                ModDataMonitor.formatBytes((long) r.gameTxBytes), ModDataMonitor.formatBytes((long) r.gameRxBytes));
-            textMgr.DrawString(FONT_DATA, lx, rowY, l3, 1.0, 1.0, 1.0, 1.0);
-            rowY += 26;
-
-            KahluaTable remNet = NetworkStatistic.getInstance().getRemoteTable();
-            if (remNet != null && remNet.rawget("received-packets") != null) {
-                textMgr.DrawString(FONT_DATA, lx, rowY,
-                    "--- SERVER-SIDE GLOBAL NETWORK ACTIVITY ---", 0.95, 0.85, 0.35, 1.0);
-                rowY += 22;
-                double sRxP = ServerNetMonitor.getDouble(remNet, "received-packets", 0);
-                double sTxP = ServerNetMonitor.getDouble(remNet, "sent-packets", 0);
-                double sRxB = ServerNetMonitor.getDouble(remNet, "received-bytes", 0);
-                double sTxB = ServerNetMonitor.getDouble(remNet, "sent-bytes", 0);
-                double sLoss = ServerNetMonitor.getDouble(remNet, "packet-loss-last-second", 0) * 100.0;
-                String sl1 = String.format(java.util.Locale.US,
-                    "Server Total Traffic: RX: %5.1f pkts/s (%s/s)  |  TX: %5.1f pkts/s (%s/s)",
-                    sRxP, ModDataMonitor.formatBytes((long) sRxB), sTxP, ModDataMonitor.formatBytes((long) sTxB));
-                textMgr.DrawString(FONT_DATA, lx, rowY, sl1, 1.0, 1.0, 0.7, 1.0);
-                rowY += 20;
-                String sl2 = String.format(java.util.Locale.US,
-                    "Server Overall Packet Loss: %.2f%%", sLoss);
-                textMgr.DrawString(FONT_DATA, lx, rowY, sl2, 1.0, 0.8, 0.4, 1.0);
-            } else {
-                textMgr.DrawString(FONT_DATA, lx, rowY,
-                    "Server-side remote stats: (Requires server statistics stream / Admin capability)", 0.6, 0.6, 0.6, 1.0);
-            }
+                ModDataMonitor.formatBytes((long) r.clientGameTxKb), ModDataMonitor.formatBytes((long) r.clientGameRxKb));
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY, l6, 0.9, 0.9, 0.9, 1.0);
         }
     }
 
     private static void renderServerWorldList(TextManager textMgr, int lx, int rowY) {
         ServerNetMonitor.ServerWorldSnapshot s = ServerNetMonitor.getServerWorldSnapshot();
-
+        int lw = WIN_W - 24;
         int mode = serverTabMode;
-        if (mode == 1) {
-            textMgr.DrawString(FONT_DATA, lx, rowY,
-                "METRIC                        CLIENT (LOCAL)                 SERVER (REMOTE)", 0.35, 0.85, 1.0, 1.0);
-            rowY += 22;
+        int row = 0;
 
-            String srvFps = (s.serverFps >= 0) ? String.format(java.util.Locale.US, "%5.1f FPS", s.serverFps) : "No stream / Non-admin";
-            String l1 = String.format(java.util.Locale.US,
-                "%-28s  %-29s  %s", "Simulation Framerate (FPS):", s.clientFps + " FPS", srvFps);
-            textMgr.DrawString(FONT_DATA, lx, rowY, l1, 1.0, 1.0, 1.0, 1.0);
-            rowY += 20;
+        if (mode == 1 || mode == 2) {
+            renderTableHeader(textMgr, lx, rowY, lw, "Performance");
+            rowY += 21;
+
+            renderTableRow(textMgr, lx, rowY, lw, "Free (MB) :", fmtNum(s.clientMemFreeMb), fmtNum(s.serverMemFreeMb), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Used (MB) :", fmtNum(s.clientMemUsedMb), fmtNum(s.serverMemUsedMb), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Total (MB) :", fmtNum(s.clientMemTotalMb), fmtNum(s.serverMemTotalMb), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Max (MB) :", fmtNum(s.clientMemMaxMb), fmtNum(s.serverMemMaxMb), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "FPS :", fmtNum(s.clientFps), fmtNum(s.serverFps), (row++ % 2 == 0));
+            rowY += 19;
 
             String srvTick = (s.serverTickAvgMs >= 0)
-                ? String.format(java.util.Locale.US, "Avg: %.1fms (Min: %.1f, Max: %.1f)", s.serverTickAvgMs, s.serverTickMinMs, s.serverTickMaxMs)
-                : "No stream";
-            String l2 = String.format(java.util.Locale.US,
-                "%-28s  %-29s  %s", "Tick Period / Simulation:", "-", srvTick);
-            textMgr.DrawString(FONT_DATA, lx, rowY, l2, 0.85, 0.85, 0.9, 1.0);
-            rowY += 20;
+                ? String.format(java.util.Locale.US, "%.1f ms (Min: %.1f, Max: %.1f)", s.serverTickAvgMs, s.serverTickMinMs, s.serverTickMaxMs)
+                : "nil";
+            renderTableRow(textMgr, lx, rowY, lw, "Tick Period (ms) :", "-", srvTick, (row++ % 2 == 0));
+            rowY += 19;
+            if (mode == 1) rowY += 6;
+        }
 
-            String cliRam = String.format(java.util.Locale.US, "%d MB / %d MB (Max: %d MB)", s.clientMemUsedMb, s.clientMemTotalMb, s.clientMemMaxMb);
-            String srvRam = (s.serverMemUsedMb >= 0)
-                ? String.format(java.util.Locale.US, "%.0f MB / %.0f MB (Max: %.0f MB)", s.serverMemUsedMb, s.serverMemTotalMb, s.serverMemMaxMb)
-                : "No stream";
-            String l3 = String.format(java.util.Locale.US,
-                "%-28s  %-29s  %s", "JVM RAM Used / Total:", cliRam, srvRam);
-            textMgr.DrawString(FONT_DATA, lx, rowY, l3, 0.4, 1.0, 0.5, 1.0);
-            rowY += 20;
+        if (mode == 1 || mode == 3) {
+            renderTableHeader(textMgr, lx, rowY, lw, "Characters");
+            rowY += 21;
 
-            String srvFree = (s.serverMemFreeMb >= 0) ? String.format(java.util.Locale.US, "%.0f MB Free", s.serverMemFreeMb) : "No stream";
-            String l4 = String.format(java.util.Locale.US,
-                "%-28s  %-29s  %s", "JVM Memory Free:", (s.clientMemTotalMb - s.clientMemUsedMb) + " MB Free", srvFree);
-            textMgr.DrawString(FONT_DATA, lx, rowY, l4, 0.7, 0.8, 0.9, 1.0);
-            rowY += 26;
+            renderTableRow(textMgr, lx, rowY, lw, "Players Connected :", fmtNum(s.clientPlayers), fmtNum(s.serverPlayers), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Animals Objects :", fmtNum(s.clientAnimalObjects), fmtNum(s.serverAnimalObjects), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Animals Instances :", fmtNum(s.clientAnimalInstances), fmtNum(s.serverAnimalInstances), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Animals Owned :", fmtNum(s.clientAnimalOwned), fmtNum(s.serverAnimalOwned), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Zombies Total :", fmtNum(s.clientZombiesTotal), fmtNum(s.serverZombiesTotal), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Zombies Loaded :", fmtNum(s.clientZombiesLoaded), fmtNum(s.serverZombiesLoaded), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Zombies Simulated :", fmtNum(s.clientZombiesSimulated), fmtNum(s.serverZombiesSimulated), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Zombies Culled :", fmtNum(s.clientZombiesCulled), fmtNum(s.serverZombiesCulled), (row++ % 2 == 0));
+            rowY += 19;
+            if (mode == 1) rowY += 6;
 
-            textMgr.DrawString(FONT_DATA, lx, rowY,
-                "--- WORLD & ENTITIES SUMMARY ---", 0.7, 0.75, 0.85, 1.0);
-            rowY += 22;
-            String l5 = String.format(java.util.Locale.US,
-                "Zombies Loaded in Local RAM: %d   |   Players Online: %s",
-                s.localZombies, (s.playersCount >= 0 ? (int) s.playersCount : "(SP/Unknown)"));
-            textMgr.DrawString(FONT_DATA, lx, rowY, l5, 1.0, 0.9, 0.6, 1.0);
-        } else {
-            textMgr.DrawString(FONT_DATA, lx, rowY,
-                "--- SERVER WORLD SIMULATION & ENTITIES ---", 0.35, 0.85, 1.0, 1.0);
-            rowY += 22;
+            renderTableHeader(textMgr, lx, rowY, lw, "World & Desyncs");
+            rowY += 21;
 
-            String l1 = String.format(java.util.Locale.US,
-                "Zombies (Active CPU Simulation): %s",
-                (s.serverZombiesSimulated >= 0 ? String.format(java.util.Locale.US, "%.0f zombies processing AI/physics this tick", s.serverZombiesSimulated) : "Server stream inactive"));
-            textMgr.DrawString(FONT_DATA, lx, rowY, l1, 1.0, 0.7, 0.5, 1.0);
-            rowY += 20;
-
-            String l2 = String.format(java.util.Locale.US,
-                "Zombies in Server Memory:        %s",
-                (s.serverZombiesLoaded >= 0 ? String.format(java.util.Locale.US, "%.0f loaded (Total in world: %.0f, Culled: %.0f)", s.serverZombiesLoaded, s.serverZombiesTotal, s.serverZombiesCulled) : "Server stream inactive"));
-            textMgr.DrawString(FONT_DATA, lx, rowY, l2, 1.0, 0.85, 0.6, 1.0);
-            rowY += 20;
-
-            String l3 = String.format(java.util.Locale.US,
-                "Zombies in Client Local Screen:  %d loaded around player", s.localZombies);
-            textMgr.DrawString(FONT_DATA, lx, rowY, l3, 0.8, 1.0, 0.6, 1.0);
-            rowY += 20;
-
-            String l4 = String.format(java.util.Locale.US,
-                "Animals (B42 Livestock/Fauna):  %s",
-                (s.animalObjects >= 0 ? String.format(java.util.Locale.US, "%.0f objects in world (%.0f sync instances)", s.animalObjects, s.animalInstances) : "Server stream inactive"));
-            textMgr.DrawString(FONT_DATA, lx, rowY, l4, 0.7, 0.9, 1.0, 1.0);
-            rowY += 20;
-
-            String l5 = String.format(java.util.Locale.US,
-                "Loaded Server Map Cells (300x300):%s",
-                (s.loadedCells >= 0 ? String.format(java.util.Locale.US, "%.0f active cells", s.loadedCells) : "Server stream inactive"));
-            textMgr.DrawString(FONT_DATA, lx, rowY, l5, 0.8, 0.85, 0.95, 1.0);
-            rowY += 26;
-
-            textMgr.DrawString(FONT_DATA, lx, rowY,
-                "--- NETWORK DESYNC & POSITION CORRECTION DETECTOR ---", 0.9, 0.4, 0.4, 1.0);
-            rowY += 22;
-            String d1 = String.format(java.util.Locale.US,
-                "Player Position Teleports (Corrections): %s",
-                (s.playerTeleports >= 0 ? String.format(java.util.Locale.US, "%.0f corrections", s.playerTeleports) : "No stream"));
-            textMgr.DrawString(FONT_DATA, lx, rowY, d1, (s.playerTeleports > 0 ? 1.0 : 0.8), (s.playerTeleports > 0 ? 0.4 : 0.8), 0.8, 1.0);
-            rowY += 20;
-            String d2 = String.format(java.util.Locale.US,
-                "Zombie Position Teleports (Corrections): %s",
-                (s.zombieTeleports >= 0 ? String.format(java.util.Locale.US, "%.0f corrections", s.zombieTeleports) : "No stream"));
-            textMgr.DrawString(FONT_DATA, lx, rowY, d2, (s.zombieTeleports > 0 ? 1.0 : 0.8), (s.zombieTeleports > 0 ? 0.4 : 0.8), 0.8, 1.0);
+            renderTableRow(textMgr, lx, rowY, lw, "Loaded Map Cells (300x300) :", fmtNum(s.clientLoadedCells), fmtNum(s.serverLoadedCells), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Player Teleports (Desync) :", "-", fmtNum(s.playerTeleports), (row++ % 2 == 0));
+            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Zombie Teleports (Desync) :", "-", fmtNum(s.zombieTeleports), (row++ % 2 == 0));
+            rowY += 19;
         }
     }
 

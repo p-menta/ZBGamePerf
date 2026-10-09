@@ -41,44 +41,74 @@ public class ServerNetMonitor {
         public int lastPing;
         public int avgPing;
         public int lowestPing;
-        public double lossLastSec;
-        public double lossTotal;
-        public long wireTxBytes;
-        public long wireRxBytes;
-        public long resendBytes;
+
+        // Low-level RakNet Transport
+        public double clientWireRxKb;
+        public double serverWireRxKb;
+        public double clientWireTxKb;
+        public double serverWireTxKb;
+        public double clientResentKb;
+        public double serverResentKb;
+        public double clientLossPct;
+        public double serverLossPct;
         public long resendMsgs;
         public boolean isCongested;
         public long bpsLimit;
-        public double gameRxPackets;
-        public double gameTxPackets;
-        public double gameRxBytes;
-        public double gameTxBytes;
-        public double voipRxBytes;
-        public double voipTxBytes;
+
+        // Game Application Protocol
+        public double clientGameRxPackets;
+        public double serverGameRxPackets;
+        public double clientGameTxPackets;
+        public double serverGameTxPackets;
+        public double clientGameRxKb;
+        public double serverGameRxKb;
+        public double clientGameTxKb;
+        public double serverGameTxKb;
+
+        // VoIP Audio
+        public double clientVoipRxKb;
+        public double serverVoipRxKb;
+        public double clientVoipTxKb;
+        public double serverVoipTxKb;
     }
 
     public static class ServerWorldSnapshot {
-        public int clientFps;
+        // Performance
+        public double clientFps;
         public double serverFps;
-        public long clientMemUsedMb;
-        public long clientMemTotalMb;
-        public long clientMemMaxMb;
-        public double serverMemUsedMb;
+        public double clientMemFreeMb;
+        public double clientMemUsedMb;
+        public double clientMemTotalMb;
+        public double clientMemMaxMb;
         public double serverMemFreeMb;
+        public double serverMemUsedMb;
         public double serverMemTotalMb;
         public double serverMemMaxMb;
         public double serverTickMinMs;
         public double serverTickMaxMs;
         public double serverTickAvgMs;
-        public double playersCount;
+
+        // Characters / Entities
+        public double clientPlayers;
+        public double serverPlayers;
+        public double clientAnimalObjects;
+        public double serverAnimalObjects;
+        public double clientAnimalInstances;
+        public double serverAnimalInstances;
+        public double clientAnimalOwned;
+        public double serverAnimalOwned;
+        public double clientZombiesTotal;
         public double serverZombiesTotal;
+        public double clientZombiesLoaded;
         public double serverZombiesLoaded;
+        public double clientZombiesSimulated;
         public double serverZombiesSimulated;
+        public double clientZombiesCulled;
         public double serverZombiesCulled;
-        public int localZombies;
-        public double animalObjects;
-        public double animalInstances;
-        public double loadedCells;
+
+        // World Simulation & Desyncs
+        public double clientLoadedCells;
+        public double serverLoadedCells;
         public double playerTeleports;
         public double zombieTeleports;
     }
@@ -245,11 +275,6 @@ public class ServerNetMonitor {
 
             ZNetStatistics net = GameClient.connection.getStatistics();
             if (net != null) {
-                snap.lossLastSec = net.packetlossLastSecond;
-                snap.lossTotal = net.packetlossTotal;
-                snap.wireTxBytes = net.lastActualBytesSent;
-                snap.wireRxBytes = net.lastActualBytesReceived;
-                snap.resendBytes = net.lastUserMessageBytesResent;
                 snap.resendMsgs = net.messagesInResendBuffer;
                 snap.isCongested = net.isLimitedByCongestionControl;
                 snap.bpsLimit = net.bpsLimitByCongestionControl;
@@ -257,13 +282,42 @@ public class ServerNetMonitor {
         }
 
         try {
-            NetworkStatistic netStat = NetworkStatistic.getInstance();
-            snap.gameRxPackets = netStat.receivedPackets.get();
-            snap.gameTxPackets = netStat.sentPackets.get();
-            snap.gameRxBytes = netStat.receivedBytes.get();
-            snap.gameTxBytes = netStat.sentBytes.get();
-            snap.voipRxBytes = netStat.voipReceived.get();
-            snap.voipTxBytes = netStat.voipSent.get();
+            KahluaTable locNet = NetworkStatistic.getInstance().getLocalTable();
+            KahluaTable remNet = NetworkStatistic.getInstance().getRemoteTable();
+
+            snap.clientGameRxPackets = getDouble(locNet, "received-packets", 0);
+            snap.serverGameRxPackets = getDouble(remNet, "received-packets", -1);
+            snap.clientGameTxPackets = getDouble(locNet, "sent-packets", 0);
+            snap.serverGameTxPackets = getDouble(remNet, "sent-packets", -1);
+
+            snap.clientGameRxKb = getDouble(locNet, "received-bytes", 0);
+            snap.serverGameRxKb = getDouble(remNet, "received-bytes", -1);
+            snap.clientGameTxKb = getDouble(locNet, "sent-bytes", 0);
+            snap.serverGameTxKb = getDouble(remNet, "sent-bytes", -1);
+
+            snap.clientWireRxKb = getDouble(locNet, "last-actual-bytes-received", 0);
+            snap.serverWireRxKb = getDouble(remNet, "last-actual-bytes-received", -1);
+            snap.clientWireTxKb = getDouble(locNet, "last-actual-bytes-sent", 0);
+            snap.serverWireTxKb = getDouble(remNet, "last-actual-bytes-sent", -1);
+
+            snap.clientResentKb = getDouble(locNet, "last-user-message-bytes-resent", 0);
+            snap.serverResentKb = getDouble(remNet, "last-user-message-bytes-resent", -1);
+
+            snap.clientLossPct = getDouble(locNet, "packet-loss-last-second", 0);
+            snap.serverLossPct = getDouble(remNet, "packet-loss-last-second", -1);
+
+            snap.clientVoipRxKb = getDouble(locNet, "voip-received", 0);
+            snap.serverVoipRxKb = getDouble(remNet, "voip-received", -1);
+            // Fallbacks for client metrics if KahluaTable wasn't populated yet
+            if (snap.isConnected) {
+                ZNetStatistics net = GameClient.connection.getStatistics();
+                if (net != null) {
+                    if (snap.clientWireRxKb <= 0) snap.clientWireRxKb = net.lastActualBytesReceived;
+                    if (snap.clientWireTxKb <= 0) snap.clientWireTxKb = net.lastActualBytesSent;
+                    if (snap.clientResentKb <= 0) snap.clientResentKb = net.lastUserMessageBytesResent;
+                    if (snap.clientLossPct <= 0) snap.clientLossPct = net.packetlossLastSecond;
+                }
+            }
         } catch (Throwable ignored) {
         }
 
@@ -276,38 +330,76 @@ public class ServerNetMonitor {
 
     private static ServerWorldSnapshot buildServerWorldSnapshot() {
         ServerWorldSnapshot snap = new ServerWorldSnapshot();
-        snap.clientFps = Math.round(GameWindow.averageFPS);
-
         Runtime rt = Runtime.getRuntime();
-        snap.clientMemUsedMb = (rt.totalMemory() - rt.freeMemory()) / (1024L * 1024L);
-        snap.clientMemTotalMb = rt.totalMemory() / (1024L * 1024L);
-        snap.clientMemMaxMb = rt.maxMemory() / (1024L * 1024L);
-
-        KahluaTable remotePerf = PerformanceStatistic.getInstance().getRemoteTable();
-        snap.serverFps = getDouble(remotePerf, "fps", -1);
-        snap.serverMemUsedMb = getDouble(remotePerf, "memory-used", -1);
-        snap.serverMemFreeMb = getDouble(remotePerf, "memory-free", -1);
-        snap.serverMemTotalMb = getDouble(remotePerf, "memory-total", -1);
-        snap.serverMemMaxMb = getDouble(remotePerf, "memory-max", -1);
-        snap.serverTickMinMs = getDouble(remotePerf, "min-update-period", -1);
-        snap.serverTickMaxMs = getDouble(remotePerf, "max-update-period", -1);
-        snap.serverTickAvgMs = getDouble(remotePerf, "avg-update-period", -1);
-
-        KahluaTable remoteGame = GameStatistic.getInstance().getRemoteTable();
-        snap.playersCount = getDouble(remoteGame, "players", -1);
-        snap.serverZombiesTotal = getDouble(remoteGame, "zombies-total", -1);
-        snap.serverZombiesLoaded = getDouble(remoteGame, "zombies-loaded", -1);
-        snap.serverZombiesSimulated = getDouble(remoteGame, "zombies-simulated", -1);
-        snap.serverZombiesCulled = getDouble(remoteGame, "zombies-culled", -1);
-        snap.animalObjects = getDouble(remoteGame, "animals-objects", -1);
-        snap.animalInstances = getDouble(remoteGame, "animals-instances", -1);
-        snap.loadedCells = getDouble(remoteGame, "loaded-cells", -1);
-        snap.playerTeleports = getDouble(remoteGame, "players-teleports", -1);
-        snap.zombieTeleports = getDouble(remoteGame, "zombies-teleports", -1);
 
         try {
-            if (IsoWorld.instance != null && IsoWorld.instance.getCell() != null && IsoWorld.instance.getCell().getZombieList() != null) {
-                snap.localZombies = IsoWorld.instance.getCell().getZombieList().size();
+            KahluaTable locPerf = PerformanceStatistic.getInstance().getLocalTable();
+            KahluaTable remPerf = PerformanceStatistic.getInstance().getRemoteTable();
+
+            snap.clientMemFreeMb = getDouble(locPerf, "memory-free", rt.freeMemory() / 1_000_000.0);
+            snap.clientMemUsedMb = getDouble(locPerf, "memory-used", (rt.totalMemory() - rt.freeMemory()) / 1_000_000.0);
+            snap.clientMemTotalMb = getDouble(locPerf, "memory-total", rt.totalMemory() / 1_000_000.0);
+            snap.clientMemMaxMb = getDouble(locPerf, "memory-max", rt.maxMemory() / 1_000_000.0);
+            snap.clientFps = getDouble(locPerf, "fps", Math.round(GameWindow.averageFPS));
+
+            snap.serverMemFreeMb = getDouble(remPerf, "memory-free", -1);
+            snap.serverMemUsedMb = getDouble(remPerf, "memory-used", -1);
+            snap.serverMemTotalMb = getDouble(remPerf, "memory-total", -1);
+            snap.serverMemMaxMb = getDouble(remPerf, "memory-max", -1);
+            snap.serverFps = getDouble(remPerf, "fps", -1);
+            snap.serverTickMinMs = getDouble(remPerf, "min-update-period", -1);
+            snap.serverTickMaxMs = getDouble(remPerf, "max-update-period", -1);
+            snap.serverTickAvgMs = getDouble(remPerf, "avg-update-period", -1);
+        } catch (Throwable ignored) {
+        }
+
+        try {
+            KahluaTable locGame = GameStatistic.getInstance().getLocalTable();
+            KahluaTable remGame = GameStatistic.getInstance().getRemoteTable();
+
+            snap.clientPlayers = getDouble(locGame, "players", GameClient.client ? GameClient.IDToPlayerMap.size() : 1);
+            snap.serverPlayers = getDouble(remGame, "players", -1);
+
+            snap.clientAnimalObjects = getDouble(locGame, "animals-objects", -1);
+            snap.serverAnimalObjects = getDouble(remGame, "animals-objects", -1);
+            snap.clientAnimalInstances = getDouble(locGame, "animals-instances", -1);
+            snap.serverAnimalInstances = getDouble(remGame, "animals-instances", -1);
+            snap.clientAnimalOwned = getDouble(locGame, "animals-owned", -1);
+            snap.serverAnimalOwned = getDouble(remGame, "animals-owned", -1);
+
+            snap.clientZombiesTotal = getDouble(locGame, "zombies-total", -1);
+            snap.serverZombiesTotal = getDouble(remGame, "zombies-total", -1);
+            snap.clientZombiesLoaded = getDouble(locGame, "zombies-loaded", -1);
+            snap.serverZombiesLoaded = getDouble(remGame, "zombies-loaded", -1);
+            snap.clientZombiesSimulated = getDouble(locGame, "zombies-simulated", -1);
+            snap.serverZombiesSimulated = getDouble(remGame, "zombies-simulated", -1);
+            snap.clientZombiesCulled = getDouble(locGame, "zombies-culled", -1);
+            snap.serverZombiesCulled = getDouble(remGame, "zombies-culled", -1);
+
+            snap.clientLoadedCells = getDouble(locGame, "loaded-cells", -1);
+            snap.serverLoadedCells = getDouble(remGame, "loaded-cells", -1);
+            snap.playerTeleports = getDouble(remGame, "players-teleports", -1);
+            snap.zombieTeleports = getDouble(remGame, "zombies-teleports", -1);
+
+            // Fallbacks for client local world entities
+            if (snap.clientZombiesLoaded < 0 && IsoWorld.instance != null && IsoWorld.instance.getCell() != null) {
+                try {
+                    snap.clientZombiesLoaded = IsoWorld.instance.getCell().getZombieList().size();
+                } catch (Throwable ignored) {}
+            }
+            if (snap.clientZombiesTotal < 0) snap.clientZombiesTotal = snap.clientZombiesLoaded;
+            if (snap.clientZombiesSimulated < 0) snap.clientZombiesSimulated = snap.clientZombiesLoaded;
+
+            if (snap.clientAnimalObjects < 0 && IsoWorld.instance != null && IsoWorld.instance.currentCell != null) {
+                try {
+                    snap.clientAnimalObjects = IsoWorld.instance.currentCell.getObjectList().stream()
+                        .filter(obj -> obj instanceof zombie.characters.animals.IsoAnimal).count();
+                } catch (Throwable ignored) {}
+            }
+            if (snap.clientAnimalInstances < 0) {
+                try {
+                    snap.clientAnimalInstances = zombie.popman.animal.AnimalInstanceManager.getInstance().getAnimals().size();
+                } catch (Throwable ignored) {}
             }
         } catch (Throwable ignored) {
         }
