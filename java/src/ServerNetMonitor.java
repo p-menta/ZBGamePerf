@@ -169,6 +169,11 @@ public class ServerNetMonitor {
         cachedRakNet = buildRakNetSnapshot();
         cachedServerWorld = buildServerWorldSnapshot();
         cachedPools = buildPoolsSnapshot();
+
+        // Periodically refresh remote server statistics if on MP
+        if (GameClient.client && (sec % 2 == 0)) {
+            requestServerStatistics();
+        }
     }
 
     public static synchronized int[] getHistoryPing() {
