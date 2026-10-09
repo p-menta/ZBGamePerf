@@ -17,12 +17,12 @@ public class UnifiedPerfUI {
     public static int activeTab = 0; // 0=Lua, 1=ModData, 2=Commands, 3=LGS, 4=Net, 5=Server, 6=Pools
 
     private static final UIFont FONT_UI = UIFont.Small;
-    private static final UIFont FONT_DATA = UIFont.CodeMedium;
+    private static final UIFont FONT_DATA = UIFont.Code;
 
     private static int winX = 50;
     private static int winY = 50;
     private static final int WIN_W = 1040;
-    private static final int WIN_H = 600;
+    private static final int WIN_H = 620;
     private static final int TAB_W = 120;
     private static final int TAB_H = 24;
 
@@ -247,12 +247,12 @@ public class UnifiedPerfUI {
             if (m == 3) return "Callbacks sorted by total invocation count";
             return "Callbacks with activity in the last minute";
         } else if (activeTab == 4) {
-            return (m == 2) ? "RakNet UDP physical wire traffic, latency, loss & resend buffer"
-                            : "3-column Client vs Server network statistics table & RakNet diagnostics";
+            return (m == 2) ? "Trafego UDP RakNet, latencia, perda e fila de reenvio"
+                            : "Estatisticas de rede Cliente vs Servidor e diagnostico RakNet";
         } else if (activeTab == 5) {
-            if (m == 2) return "Client vs Server JVM memory, FPS and simulation tick period";
-            if (m == 3) return "Client vs Server zombies, animals, loaded cells and desync teleports";
-            return "Complete 3-column table matching native in-game Performance & Characters statistics";
+            if (m == 2) return "Memoria JVM, FPS e periodo de tick do Cliente vs Servidor";
+            if (m == 3) return "Zumbis, animais, celulas carregadas e teleporles de desync";
+            return "Estatisticas de Performance, Entidades e Mundo do Cliente vs Servidor";
         } else {
             if (m == 2) return "Pools sorted by reuse count (cache hits preventing GC pauses)";
             if (m == 3) return "Pools sorted by fresh object allocations (misses)";
@@ -439,12 +439,12 @@ public class UnifiedPerfUI {
             pbr = profHover ? 0.20f : 0.14f;
             pbg = profHover ? 0.55f : 0.40f;
             pbb = profHover ? 0.35f : 0.22f;
-            profLabel = "Aferição: TODAS AS ABAS (Ctrl+P)";
+            profLabel = "Afericao: TODAS AS ABAS (Ctrl+P)";
         } else {
             pbr = profHover ? 0.22f : 0.16f;
             pbg = profHover ? 0.36f : 0.26f;
             pbb = profHover ? 0.55f : 0.42f;
-            profLabel = "Aferição: ABA ATUAL (Modular) (Ctrl+P)";
+            profLabel = "Afericao: ABA ATUAL (Modular) (Ctrl+P)";
         }
         SpriteRenderer.instance.renderRect(profBtnX, profBtnY, profBtnW, profBtnH, pbr, pbg, pbb, 1.0f);
         textMgr.DrawString(FONT_UI, profBtnX + 10, profBtnY + 3, profLabel, 1.0, 1.0, 1.0, 1.0);
@@ -599,7 +599,7 @@ public class UnifiedPerfUI {
         }
 
         String label = String.format(java.util.Locale.US,
-            "Ping: %dms (Méd: %dms, Pico: %dms) | Perda: %.1f%% | %s",
+            "Ping: %dms (Med: %dms, Pico: %dms) | Perda: %.1f%% | %s",
             currentPing, avgPing, maxPing, currentLoss, chunkStatus);
         textMgr.DrawString(FONT_UI, gx + 10, gy + 5, label, 0.35, 0.9, 1.0, 1.0);
 
@@ -902,7 +902,7 @@ public class UnifiedPerfUI {
 
             String loc = e.info.relativePath + ":" + e.info.line;
             String line = String.format(java.util.Locale.US,
-                "%-10s  %-30s  %6d (%4.1f/s)   %7.1fms    %6.1fµs    %6.1fms",
+                "%-10s  %-30s  %6d (%4.1f/s)   %7.1fms    %6.1fus    %6.1fms",
                 prefixStr, loc, e.totalCount, e.getRatePerSecond(), totalMs, avgUs, maxMs);
 
             double r, g, b;
@@ -923,14 +923,14 @@ public class UnifiedPerfUI {
     private static void renderTableHeader(TextManager textMgr, int lx, int rowY, int lw, String title) {
         SpriteRenderer.instance.renderRect(lx, rowY, lw, 20, 0.13f, 0.16f, 0.22f, 0.9f);
         textMgr.DrawString(FONT_UI, lx + 16, rowY + 2, title, 1.0, 0.75, 0.35, 1.0);
-        textMgr.DrawString(FONT_UI, lx + 440, rowY + 2, "Client", 1.0, 0.75, 0.35, 1.0);
-        textMgr.DrawString(FONT_UI, lx + 740, rowY + 2, "Server", 1.0, 0.75, 0.35, 1.0);
+        textMgr.DrawString(FONT_UI, lx + 400, rowY + 2, "Client", 1.0, 0.75, 0.35, 1.0);
+        textMgr.DrawString(FONT_UI, lx + 710, rowY + 2, "Server", 1.0, 0.75, 0.35, 1.0);
     }
 
     private static void renderTableRow(TextManager textMgr, int lx, int rowY, int lw,
                                        String label, String clientVal, String serverVal, boolean isEven) {
         if (isEven) {
-            SpriteRenderer.instance.renderRect(lx, rowY, lw, 19, 0.08f, 0.09f, 0.12f, 0.45f);
+            SpriteRenderer.instance.renderRect(lx, rowY, lw, 18, 0.08f, 0.09f, 0.12f, 0.45f);
         }
         textMgr.DrawString(FONT_DATA, lx + 20, rowY + 1, label, 0.85, 0.88, 0.92, 1.0);
 
@@ -938,13 +938,13 @@ public class UnifiedPerfUI {
         double cr = cNil ? 0.5 : 0.95;
         double cg = cNil ? 0.5 : 0.95;
         double cb = cNil ? 0.5 : 0.95;
-        textMgr.DrawString(FONT_DATA, lx + 440, rowY + 1, clientVal, cr, cg, cb, 1.0);
+        textMgr.DrawString(FONT_DATA, lx + 400, rowY + 1, clientVal, cr, cg, cb, 1.0);
 
         boolean sNil = "nil".equals(serverVal) || "-".equals(serverVal) || serverVal.startsWith("No stream");
         double sr = sNil ? 0.5 : 0.95;
         double sg = sNil ? 0.5 : 0.95;
         double sb = sNil ? 0.5 : 0.95;
-        textMgr.DrawString(FONT_DATA, lx + 740, rowY + 1, serverVal, sr, sg, sb, 1.0);
+        textMgr.DrawString(FONT_DATA, lx + 710, rowY + 1, serverVal, sr, sg, sb, 1.0);
     }
 
     private static String fmtNum(double val) {
@@ -972,26 +972,26 @@ public class UnifiedPerfUI {
             textMgr.DrawString(FONT_DATA, lx + 20, rowY + 32,
                 "(Network & RakNet metrics become active when connected to a LAN or Dedicated Server)", 0.6, 0.6, 0.6, 1.0);
 
-            rowY += 60;
+            rowY += 50;
             renderTableHeader(textMgr, lx, rowY, lw, "Chunk Delivery & Streaming (Perimeter 100%)");
-            rowY += 21;
+            rowY += 20;
             int row = 0;
             String syncVal = String.format(java.util.Locale.US, "%d / %d (%.1f%%)",
                 ChunkDeliveryMonitor.loadedChunks, ChunkDeliveryMonitor.totalChunks, ChunkDeliveryMonitor.syncPct);
             String syncState = ChunkDeliveryMonitor.isWaiting ? "AGUARDANDO CARREGAMENTO" : "100% SINCRONIZADO";
-            renderTableRow(textMgr, lx, rowY, lw, "Status do Perímetro :", syncVal, syncState, (row++ % 2 == 0));
-            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Status do Perimetro :", syncVal, syncState, (row++ % 2 == 0));
+            rowY += 18;
 
             String waitTime = ChunkDeliveryMonitor.isWaiting
                 ? String.format(java.util.Locale.US, "%.0f ms (carregando)", ChunkDeliveryMonitor.currentWaitMs)
-                : String.format(java.util.Locale.US, "%.0f ms (último sync)", ChunkDeliveryMonitor.lastDeliveryTimeMs);
-            String peakTime = String.format(java.util.Locale.US, "Pico: %.0f ms | Média: %.0f ms",
+                : String.format(java.util.Locale.US, "%.0f ms (ultimo sync)", ChunkDeliveryMonitor.lastDeliveryTimeMs);
+            String peakTime = String.format(java.util.Locale.US, "Pico: %.0f ms | Media: %.0f ms",
                 ChunkDeliveryMonitor.peakDeliveryTimeMs, ChunkDeliveryMonitor.avgDeliveryTimeMs);
             renderTableRow(textMgr, lx, rowY, lw, "Tempo Espera 100% Chunks :", waitTime, peakTime, (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
 
-            String inFlight = ChunkDeliveryMonitor.inFlightRequests + " requisições pendentes";
-            String queueStr = ChunkDeliveryMonitor.loadQueueSize + " chunks na fila de descompressão";
+            String inFlight = ChunkDeliveryMonitor.inFlightRequests + " requisicoes pendentes";
+            String queueStr = ChunkDeliveryMonitor.loadQueueSize + " chunks na fila de descompressao";
             renderTableRow(textMgr, lx, rowY, lw, "Fila de Chunks (Disco) :", inFlight, queueStr, (row++ % 2 == 0));
             return;
         }
@@ -1000,129 +1000,129 @@ public class UnifiedPerfUI {
         if (mode == 1) {
             int row = 0;
             renderTableHeader(textMgr, lx, rowY, lw, "Network");
-            rowY += 21;
+            rowY += 20;
 
             renderTableRow(textMgr, lx, rowY, lw, "RX (P) :", fmtNum(r.clientGameRxPackets), fmtNum(r.serverGameRxPackets), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "TX (P) :", fmtNum(r.clientGameTxPackets), fmtNum(r.serverGameTxPackets), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "RX (KB) :", fmtKB(r.clientGameRxKb), fmtKB(r.serverGameRxKb), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "TX (KB) :", fmtKB(r.clientGameTxKb), fmtKB(r.serverGameTxKb), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "RAKNET RX (KB) :", fmtKB(r.clientWireRxKb), fmtKB(r.serverWireRxKb), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "RAKNET TX (KB) :", fmtKB(r.clientWireTxKb), fmtKB(r.serverWireTxKb), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "RAKNET Resent (KB) :", fmtKB(r.clientResentKb), fmtKB(r.serverResentKb), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "RAKNET Loss (%) :", fmtPct(r.clientLossPct), fmtPct(r.serverLossPct), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "VOIP RX (KB) :", fmtKB(r.clientVoipRxKb), fmtKB(r.serverVoipRxKb), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "VOIP TX (KB) :", fmtKB(r.clientVoipTxKb), fmtKB(r.serverVoipTxKb), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
 
-            rowY += 6;
+            rowY += 4;
             renderTableHeader(textMgr, lx, rowY, lw, "RakNet Diagnostics");
-            rowY += 21;
+            rowY += 20;
 
             String pingCli = String.format(java.util.Locale.US, "%d ms (Avg: %d, Low: %d)", r.lastPing, r.avgPing, r.lowestPing);
             renderTableRow(textMgr, lx, rowY, lw, "Ping / Latency :", pingCli, "-", (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
 
             String resendQueue = r.resendMsgs + " msgs in queue";
             renderTableRow(textMgr, lx, rowY, lw, "Resend Buffer Queue :", resendQueue, "-", (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
 
             String cong = r.isCongested ? "ACTIVE (Throttled)" : "None (Unrestricted)";
             String congSrv = (r.bpsLimit > 0) ? (ModDataMonitor.formatBytes(r.bpsLimit) + "/s") : "-";
             renderTableRow(textMgr, lx, rowY, lw, "Congestion Control :", cong, congSrv, (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
 
-            rowY += 6;
+            rowY += 4;
             renderTableHeader(textMgr, lx, rowY, lw, "Chunk Delivery & Streaming (Perimeter 100%)");
-            rowY += 21;
+            rowY += 20;
 
             String syncVal = String.format(java.util.Locale.US, "%d / %d (%.1f%%)",
                 ChunkDeliveryMonitor.loadedChunks, ChunkDeliveryMonitor.totalChunks, ChunkDeliveryMonitor.syncPct);
             String syncState = ChunkDeliveryMonitor.isWaiting ? "AGUARDANDO ENTREGA" : "100% SINCRONIZADO";
-            renderTableRow(textMgr, lx, rowY, lw, "Status do Perímetro :", syncVal, syncState, (row++ % 2 == 0));
-            rowY += 19;
+            renderTableRow(textMgr, lx, rowY, lw, "Status do Perimetro :", syncVal, syncState, (row++ % 2 == 0));
+            rowY += 18;
 
             String waitTime = ChunkDeliveryMonitor.isWaiting
                 ? String.format(java.util.Locale.US, "%.0f ms (esperando)", ChunkDeliveryMonitor.currentWaitMs)
-                : String.format(java.util.Locale.US, "%.0f ms (último sync)", ChunkDeliveryMonitor.lastDeliveryTimeMs);
-            String peakTime = String.format(java.util.Locale.US, "Pico: %.0f ms | Média: %.0f ms",
+                : String.format(java.util.Locale.US, "%.0f ms (ultimo sync)", ChunkDeliveryMonitor.lastDeliveryTimeMs);
+            String peakTime = String.format(java.util.Locale.US, "Pico: %.0f ms | Media: %.0f ms",
                 ChunkDeliveryMonitor.peakDeliveryTimeMs, ChunkDeliveryMonitor.avgDeliveryTimeMs);
             renderTableRow(textMgr, lx, rowY, lw, "Tempo Espera 100% Chunks :", waitTime, peakTime, (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
 
-            String inFlight = ChunkDeliveryMonitor.inFlightRequests + " pacotes em trânsito (WorldStreamer)";
-            String queueStr = ChunkDeliveryMonitor.loadQueueSize + " chunks na fila de descompressão";
+            String inFlight = ChunkDeliveryMonitor.inFlightRequests + " pacotes em transito (WorldStreamer)";
+            String queueStr = ChunkDeliveryMonitor.loadQueueSize + " chunks na fila de descompressao";
             renderTableRow(textMgr, lx, rowY, lw, "Fila de Chunks (Rede/Disco) :", inFlight, queueStr, (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
         } else {
             textMgr.DrawString(FONT_DATA, lx + 20, rowY,
                 "--- RAKNET LOW-LEVEL UDP TRANSPORT & PHYSICAL WIRE METRICS ---", 0.35, 0.85, 1.0, 1.0);
-            rowY += 22;
+            rowY += 20;
 
             String lossColor = (r.clientLossPct > 0.02) ? "HIGH" : "GOOD";
             String l1 = String.format(java.util.Locale.US,
                 "Latency: %d ms (Avg: %d ms, Lowest: %d ms)     | Packet Loss (1s): %5.2f%% (%s)",
                 r.lastPing, r.avgPing, r.lowestPing, r.clientLossPct * 100.0, lossColor);
             textMgr.DrawString(FONT_DATA, lx + 20, rowY, l1, 1.0, 1.0, 1.0, 1.0);
-            rowY += 20;
+            rowY += 19;
 
             String l2 = String.format(java.util.Locale.US,
                 "Actual Wire Traffic:  TX %s/s  |  RX %s/s     (Physical UDP bytes on wire)",
                 ModDataMonitor.formatBytes((long) r.clientWireTxKb), ModDataMonitor.formatBytes((long) r.clientWireRxKb));
             textMgr.DrawString(FONT_DATA, lx + 20, rowY, l2, 0.4, 1.0, 0.5, 1.0);
-            rowY += 20;
+            rowY += 19;
 
             String l3 = String.format(java.util.Locale.US,
                 "Packet Resends:       %s resent      | Resend Queue: %d messages in buffer",
                 ModDataMonitor.formatBytes((long) r.clientResentKb), r.resendMsgs);
             textMgr.DrawString(FONT_DATA, lx + 20, rowY, l3, (r.resendMsgs > 5 ? 1.0 : 0.8), (r.resendMsgs > 5 ? 0.4 : 0.8), 0.8, 1.0);
-            rowY += 20;
+            rowY += 19;
 
             String cong = r.isCongested ? "ACTIVE (Throttling connection)" : "None (Bandwidth unrestricted)";
             String l4 = String.format(java.util.Locale.US,
                 "Congestion Control:   %s  | Bps Limit: %s",
                 cong, (r.bpsLimit > 0 ? ModDataMonitor.formatBytes(r.bpsLimit) + "/s" : "Unlimited"));
             textMgr.DrawString(FONT_DATA, lx + 20, rowY, l4, 0.8, 0.85, 0.9, 1.0);
-            rowY += 26;
+            rowY += 24;
 
             textMgr.DrawString(FONT_DATA, lx + 20, rowY,
                 "--- HIGHER LEVEL PROTOCOL OVERVIEW ---", 0.7, 0.75, 0.85, 1.0);
-            rowY += 22;
+            rowY += 20;
             String l5 = String.format(java.util.Locale.US,
                 "Game Application Packets:  TX: %5.1f pkts/s  |  RX: %5.1f pkts/s",
                 r.clientGameTxPackets, r.clientGameRxPackets);
             textMgr.DrawString(FONT_DATA, lx + 20, rowY, l5, 0.9, 0.9, 0.9, 1.0);
-            rowY += 20;
+            rowY += 19;
             String l6 = String.format(java.util.Locale.US,
                 "Game Application Bandwidth: TX: %s/s   |  RX: %s/s",
                 ModDataMonitor.formatBytes((long) r.clientGameTxKb), ModDataMonitor.formatBytes((long) r.clientGameRxKb));
             textMgr.DrawString(FONT_DATA, lx + 20, rowY, l6, 0.9, 0.9, 0.9, 1.0);
-            rowY += 20;
+            rowY += 19;
 
-            rowY += 8;
+            rowY += 6;
             textMgr.DrawString(FONT_DATA, lx + 20, rowY,
                 "--- CHUNK DELIVERY & STREAMING (100% PERIMETER) ---", 0.7, 0.75, 0.85, 1.0);
-            rowY += 22;
+            rowY += 20;
             String chunkDeliveryInfo = String.format(java.util.Locale.US,
-                "Perímetro: %d/%d (%.1f%%) | Espera Atual: %.0fms | Última: %.0fms | Pico: %.0fms | Média: %.0fms",
+                "Perimetro: %d/%d (%.1f%%) | Espera Atual: %.0fms | Ultima: %.0fms | Pico: %.0fms | Media: %.0fms",
                 ChunkDeliveryMonitor.loadedChunks, ChunkDeliveryMonitor.totalChunks, ChunkDeliveryMonitor.syncPct,
                 ChunkDeliveryMonitor.currentWaitMs, ChunkDeliveryMonitor.lastDeliveryTimeMs,
                 ChunkDeliveryMonitor.peakDeliveryTimeMs, ChunkDeliveryMonitor.avgDeliveryTimeMs);
             textMgr.DrawString(FONT_DATA, lx + 20, rowY, chunkDeliveryInfo, 0.4, 0.95, 0.65, 1.0);
-            rowY += 20;
+            rowY += 19;
             String chunkQueueInfo = String.format(java.util.Locale.US,
-                "Requisições em trânsito (sentRequests): %d | Fila de descompressão: %d",
+                "Requisicoes em transito (sentRequests): %d | Fila de descompressao: %d",
                 ChunkDeliveryMonitor.inFlightRequests, ChunkDeliveryMonitor.loadQueueSize);
             textMgr.DrawString(FONT_DATA, lx + 20, rowY, chunkQueueInfo, 0.8, 0.85, 0.9, 1.0);
-            rowY += 20;
+            rowY += 19;
         }
     }
 
@@ -1134,58 +1134,58 @@ public class UnifiedPerfUI {
 
         if (mode == 1 || mode == 2) {
             renderTableHeader(textMgr, lx, rowY, lw, "Performance");
-            rowY += 21;
+            rowY += 20;
 
             renderTableRow(textMgr, lx, rowY, lw, "Free (MB) :", fmtNum(s.clientMemFreeMb), fmtNum(s.serverMemFreeMb), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "Used (MB) :", fmtNum(s.clientMemUsedMb), fmtNum(s.serverMemUsedMb), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "Total (MB) :", fmtNum(s.clientMemTotalMb), fmtNum(s.serverMemTotalMb), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "Max (MB) :", fmtNum(s.clientMemMaxMb), fmtNum(s.serverMemMaxMb), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "FPS :", fmtNum(s.clientFps), fmtNum(s.serverFps), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
 
             String srvTick = (s.serverTickAvgMs >= 0)
                 ? String.format(java.util.Locale.US, "%.1f ms (Min: %.1f, Max: %.1f)", s.serverTickAvgMs, s.serverTickMinMs, s.serverTickMaxMs)
                 : "nil";
             renderTableRow(textMgr, lx, rowY, lw, "Tick Period (ms) :", "-", srvTick, (row++ % 2 == 0));
-            rowY += 19;
-            if (mode == 1) rowY += 6;
+            rowY += 18;
+            if (mode == 1) rowY += 4;
         }
 
         if (mode == 1 || mode == 3) {
             renderTableHeader(textMgr, lx, rowY, lw, "Characters");
-            rowY += 21;
+            rowY += 20;
 
             renderTableRow(textMgr, lx, rowY, lw, "Players Connected :", fmtNum(s.clientPlayers), fmtNum(s.serverPlayers), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "Animals Objects :", fmtNum(s.clientAnimalObjects), fmtNum(s.serverAnimalObjects), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "Animals Instances :", fmtNum(s.clientAnimalInstances), fmtNum(s.serverAnimalInstances), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "Animals Owned :", fmtNum(s.clientAnimalOwned), fmtNum(s.serverAnimalOwned), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "Zombies Total :", fmtNum(s.clientZombiesTotal), fmtNum(s.serverZombiesTotal), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "Zombies Loaded :", fmtNum(s.clientZombiesLoaded), fmtNum(s.serverZombiesLoaded), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "Zombies Simulated :", fmtNum(s.clientZombiesSimulated), fmtNum(s.serverZombiesSimulated), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "Zombies Culled :", fmtNum(s.clientZombiesCulled), fmtNum(s.serverZombiesCulled), (row++ % 2 == 0));
-            rowY += 19;
-            if (mode == 1) rowY += 6;
+            rowY += 18;
+            if (mode == 1) rowY += 4;
 
             renderTableHeader(textMgr, lx, rowY, lw, "World & Desyncs");
-            rowY += 21;
+            rowY += 20;
 
             renderTableRow(textMgr, lx, rowY, lw, "Loaded Map Cells (300x300) :", fmtNum(s.clientLoadedCells), fmtNum(s.serverLoadedCells), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "Player Teleports (Desync) :", "-", fmtNum(s.playerTeleports), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
             renderTableRow(textMgr, lx, rowY, lw, "Zombie Teleports (Desync) :", "-", fmtNum(s.zombieTeleports), (row++ % 2 == 0));
-            rowY += 19;
+            rowY += 18;
         }
     }
 
