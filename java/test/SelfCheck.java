@@ -9,6 +9,9 @@ public class SelfCheck {
         assert ping != null : "ping history must not be null";
         assert ping.length == 60 : "ping history length must be 60";
 
+        ServerNetMonitor.RakNetSnapshot snap = ServerNetMonitor.getRakNetSnapshot();
+        assert snap != null : "snapshot must not be null";
+
         // Verify history values initialized
         for (int v : ping) {
             assert v == 0 : "initial ping must be 0";

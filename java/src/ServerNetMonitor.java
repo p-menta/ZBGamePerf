@@ -31,6 +31,11 @@ public class ServerNetMonitor {
 
     private static final long[] historyPoolsUsed = new long[60];
 
+    // 1-second cached snapshots (refreshed in update() once every second)
+    private static volatile RakNetSnapshot cachedRakNet = new RakNetSnapshot();
+    private static volatile ServerWorldSnapshot cachedServerWorld = new ServerWorldSnapshot();
+    private static volatile PoolsSnapshot cachedPools = new PoolsSnapshot();
+
     public static class RakNetSnapshot {
         public boolean isConnected;
         public int lastPing;
@@ -159,6 +164,11 @@ public class ServerNetMonitor {
             historyPoolsUsed[idx] = (long) PerformanceStatistic.getInstance().allPoolsInUse.get();
         } catch (Throwable ignored) {
         }
+
+        // Rebuild 1-second cached snapshots
+        cachedRakNet = buildRakNetSnapshot();
+        cachedServerWorld = buildServerWorldSnapshot();
+        cachedPools = buildPoolsSnapshot();
     }
 
     public static synchronized int[] getHistoryPing() {
@@ -217,6 +227,10 @@ public class ServerNetMonitor {
     }
 
     public static RakNetSnapshot getRakNetSnapshot() {
+        return cachedRakNet;
+    }
+
+    private static RakNetSnapshot buildRakNetSnapshot() {
         RakNetSnapshot snap = new RakNetSnapshot();
         snap.isConnected = GameClient.client && GameClient.connection != null;
         if (snap.isConnected) {
@@ -252,6 +266,10 @@ public class ServerNetMonitor {
     }
 
     public static ServerWorldSnapshot getServerWorldSnapshot() {
+        return cachedServerWorld;
+    }
+
+    private static ServerWorldSnapshot buildServerWorldSnapshot() {
         ServerWorldSnapshot snap = new ServerWorldSnapshot();
         snap.clientFps = Math.round(GameWindow.averageFPS);
 
@@ -293,6 +311,10 @@ public class ServerNetMonitor {
     }
 
     public static PoolsSnapshot getPoolsSnapshot() {
+        return cachedPools;
+    }
+
+    private static PoolsSnapshot buildPoolsSnapshot() {
         PoolsSnapshot snap = new PoolsSnapshot();
         try {
             PerformanceStatistic perf = PerformanceStatistic.getInstance();
@@ -352,5 +374,8 @@ public class ServerNetMonitor {
         java.util.Arrays.fill(historyClientMem, 0);
         java.util.Arrays.fill(historyServerMem, 0);
         java.util.Arrays.fill(historyPoolsUsed, 0);
+        cachedRakNet = new RakNetSnapshot();
+        cachedServerWorld = new ServerWorldSnapshot();
+        cachedPools = new PoolsSnapshot();
     }
 }
