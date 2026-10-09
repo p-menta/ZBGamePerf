@@ -169,7 +169,7 @@ public class PerfRenderer {
         int x0 = ZBGamePerf.osdX;
         int y0 = ZBGamePerf.osdY;
 
-        var font = UIFont.CodeSmall;
+        var font = UIFont.CodeMedium;
         var scrH = core.getScreenHeight();
 
         // Update cached data only when update interval has elapsed
