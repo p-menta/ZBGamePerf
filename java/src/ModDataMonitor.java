@@ -103,20 +103,67 @@ public class ModDataMonitor {
         }
     }
 
-    public static void recordTx(String tag, int bytes) {
+    private static final long[] secondTxBytes = new long[60];
+    private static final long[] secondRxBytes = new long[60];
+    private static long lastModDataSecond = 0;
+
+    public static synchronized void recordTx(String tag, int bytes) {
         final String effectiveTag = (tag == null || tag.isEmpty()) ? "Unknown" : tag;
         String key = "TX:" + effectiveTag;
         entries.computeIfAbsent(key, k -> new ModDataEntry(effectiveTag, true)).record(bytes);
+
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        secondTxBytes[(int)(sec % 60)] += bytes;
     }
 
-    public static void recordRx(String tag, int bytes) {
+    public static synchronized void recordRx(String tag, int bytes) {
         final String effectiveTag = (tag == null || tag.isEmpty()) ? "Unknown" : tag;
         String key = "RX:" + effectiveTag;
         entries.computeIfAbsent(key, k -> new ModDataEntry(effectiveTag, false)).record(bytes);
+
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        secondRxBytes[(int)(sec % 60)] += bytes;
     }
 
-    public static void reset() {
+    private static void advanceGlobalSecond(long sec) {
+        if (sec != lastModDataSecond) {
+            long diff = Math.min(sec - lastModDataSecond, 60L);
+            for (long s = 1; s <= diff; s++) {
+                int idx = (int)((lastModDataSecond + s) % 60);
+                secondTxBytes[idx] = 0;
+                secondRxBytes[idx] = 0;
+            }
+            lastModDataSecond = sec;
+        }
+    }
+
+    public static synchronized long[] getHistoryTx() {
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        long[] result = new long[60];
+        for (int i = 0; i < 60; i++) {
+            result[i] = secondTxBytes[(int)((sec - 59 + i) % 60 + 60) % 60];
+        }
+        return result;
+    }
+
+    public static synchronized long[] getHistoryRx() {
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        long[] result = new long[60];
+        for (int i = 0; i < 60; i++) {
+            result[i] = secondRxBytes[(int)((sec - 59 + i) % 60 + 60) % 60];
+        }
+        return result;
+    }
+
+    public static synchronized void reset() {
         entries.clear();
+        java.util.Arrays.fill(secondTxBytes, 0);
+        java.util.Arrays.fill(secondRxBytes, 0);
+        lastModDataSecond = 0;
     }
 
     public static List<ModDataEntry> getEntries(int mode) {

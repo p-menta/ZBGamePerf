@@ -37,6 +37,37 @@ public class PerformanceMonitor {
         initInternalPerformanceTracking();
     }
     
+    private static final long[] secondDurationNs = new long[60];
+    private static long lastLuaSecond = 0;
+
+    public static synchronized void recordSecondSample(long durationNs) {
+        long sec = System.currentTimeMillis() / 1000L;
+        if (sec != lastLuaSecond) {
+            long diff = Math.min(sec - lastLuaSecond, 60L);
+            for (long s = 1; s <= diff; s++) {
+                secondDurationNs[(int)((lastLuaSecond + s) % 60)] = 0;
+            }
+            lastLuaSecond = sec;
+        }
+        secondDurationNs[(int)(sec % 60)] += durationNs;
+    }
+
+    public static synchronized long[] getHistory() {
+        long sec = System.currentTimeMillis() / 1000L;
+        if (sec > lastLuaSecond) {
+            long diff = Math.min(sec - lastLuaSecond, 60L);
+            for (long s = 1; s <= diff; s++) {
+                secondDurationNs[(int)((lastLuaSecond + s) % 60)] = 0;
+            }
+            lastLuaSecond = sec;
+        }
+        long[] result = new long[60];
+        for (int i = 0; i < 60; i++) {
+            result[i] = secondDurationNs[(int)((sec - 59 + i) % 60 + 60) % 60];
+        }
+        return result;
+    }
+
     public static void reset() {
         statsMap.clear();
         activeKeys.clear();
@@ -45,6 +76,10 @@ public class PerformanceMonitor {
         nameToSlowKey.clear();
         excludedSlowKeys.clear();
         lastLogTime = System.nanoTime();
+        synchronized (PerformanceMonitor.class) {
+            java.util.Arrays.fill(secondDurationNs, 0);
+            lastLuaSecond = 0;
+        }
 
         initInternalPerformanceTracking();
     }
@@ -73,6 +108,7 @@ public class PerformanceMonitor {
     }
 
     private static void recordTimingInternal(Object funcObj, long startTimeNs, long durationNanos) {
+        recordSecondSample(durationNanos);
         int slowKey = 0;
         String name;
         

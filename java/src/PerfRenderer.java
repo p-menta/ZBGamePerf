@@ -44,7 +44,7 @@ public class PerfRenderer {
     private static List<CachedLine> cachedLines = new java.util.ArrayList<>();
     
     // Helper class to hold formatted call data with color info
-    private static class FormattedCall {
+    static class FormattedCall {
         String timeStr;
         String countStr;
         String prefixStr;

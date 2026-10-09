@@ -105,22 +105,69 @@ public class CommandMonitor {
         }
     }
 
-    public static void recordTx(String module, String command, int bytes) {
+    private static final long[] secondTxBytes = new long[60];
+    private static final long[] secondRxBytes = new long[60];
+    private static long lastCmdSecond = 0;
+
+    public static synchronized void recordTx(String module, String command, int bytes) {
         final String m = (module == null || module.isEmpty()) ? "Unknown" : module;
         final String c = (command == null || command.isEmpty()) ? "Unknown" : command;
         String key = "TX:" + m + ":" + c;
         entries.computeIfAbsent(key, k -> new CommandEntry(m, c, true)).record(bytes);
+
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        secondTxBytes[(int)(sec % 60)] += bytes;
     }
 
-    public static void recordRx(String module, String command, int bytes) {
+    public static synchronized void recordRx(String module, String command, int bytes) {
         final String m = (module == null || module.isEmpty()) ? "Unknown" : module;
         final String c = (command == null || command.isEmpty()) ? "Unknown" : command;
         String key = "RX:" + m + ":" + c;
         entries.computeIfAbsent(key, k -> new CommandEntry(m, c, false)).record(bytes);
+
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        secondRxBytes[(int)(sec % 60)] += bytes;
     }
 
-    public static void reset() {
+    private static void advanceGlobalSecond(long sec) {
+        if (sec != lastCmdSecond) {
+            long diff = Math.min(sec - lastCmdSecond, 60L);
+            for (long s = 1; s <= diff; s++) {
+                int idx = (int)((lastCmdSecond + s) % 60);
+                secondTxBytes[idx] = 0;
+                secondRxBytes[idx] = 0;
+            }
+            lastCmdSecond = sec;
+        }
+    }
+
+    public static synchronized long[] getHistoryTx() {
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        long[] result = new long[60];
+        for (int i = 0; i < 60; i++) {
+            result[i] = secondTxBytes[(int)((sec - 59 + i) % 60 + 60) % 60];
+        }
+        return result;
+    }
+
+    public static synchronized long[] getHistoryRx() {
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        long[] result = new long[60];
+        for (int i = 0; i < 60; i++) {
+            result[i] = secondRxBytes[(int)((sec - 59 + i) % 60 + 60) % 60];
+        }
+        return result;
+    }
+
+    public static synchronized void reset() {
         entries.clear();
+        java.util.Arrays.fill(secondTxBytes, 0);
+        java.util.Arrays.fill(secondRxBytes, 0);
+        lastCmdSecond = 0;
     }
 
     public static List<CommandEntry> getEntries(int mode) {

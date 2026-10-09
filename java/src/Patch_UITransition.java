@@ -6,9 +6,6 @@ import me.zed_0xff.zombie_buddy.Patch;
 public class Patch_UITransition {
     @Patch.OnEnter
     public static void enter() {
-        PerfRenderer.render();
-        ModDataRenderer.render();
-        CommandRenderer.render();
-        LoadGridSquareRenderer.render();
+        UnifiedPerfUI.render();
     }
 }

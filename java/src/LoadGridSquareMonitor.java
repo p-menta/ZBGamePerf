@@ -100,19 +100,63 @@ public class LoadGridSquareMonitor {
     public static long totalSquaresLoaded = 0;
     public static long totalEventDurationNs = 0;
 
+    private static final long[] secondDurationNs = new long[60];
+    private static final int[] secondSquares = new int[60];
+    private static long lastLgsSecond = 0;
+
     public static boolean isInsideEvent() {
         return insideLGS.get();
     }
 
-    public static void onEnterEvent() {
+    public static synchronized void onEnterEvent() {
         if (!ZBGamePerf.loadGridSquareOsdEnabled) return;
         insideLGS.set(Boolean.TRUE);
         totalSquaresLoaded++;
+
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        secondSquares[(int)(sec % 60)]++;
     }
 
-    public static void onExitEvent(long durationNs) {
+    public static synchronized void onExitEvent(long durationNs) {
         insideLGS.set(Boolean.FALSE);
         totalEventDurationNs += durationNs;
+
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        secondDurationNs[(int)(sec % 60)] += durationNs;
+    }
+
+    private static void advanceGlobalSecond(long sec) {
+        if (sec != lastLgsSecond) {
+            long diff = Math.min(sec - lastLgsSecond, 60L);
+            for (long s = 1; s <= diff; s++) {
+                int idx = (int)((lastLgsSecond + s) % 60);
+                secondDurationNs[idx] = 0;
+                secondSquares[idx] = 0;
+            }
+            lastLgsSecond = sec;
+        }
+    }
+
+    public static synchronized long[] getHistoryDuration() {
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        long[] result = new long[60];
+        for (int i = 0; i < 60; i++) {
+            result[i] = secondDurationNs[(int)((sec - 59 + i) % 60 + 60) % 60];
+        }
+        return result;
+    }
+
+    public static synchronized int[] getHistorySquares() {
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        int[] result = new int[60];
+        for (int i = 0; i < 60; i++) {
+            result[i] = secondSquares[(int)((sec - 59 + i) % 60 + 60) % 60];
+        }
+        return result;
     }
 
     public static void recordCallback(Object fun, long durationNs) {
@@ -139,10 +183,13 @@ public class LoadGridSquareMonitor {
         }
     }
 
-    public static void reset() {
+    public static synchronized void reset() {
         entries.clear();
         totalSquaresLoaded = 0;
         totalEventDurationNs = 0;
+        java.util.Arrays.fill(secondDurationNs, 0);
+        java.util.Arrays.fill(secondSquares, 0);
+        lastLgsSecond = 0;
     }
 
     public static List<CallbackEntry> getEntries(int mode) {
