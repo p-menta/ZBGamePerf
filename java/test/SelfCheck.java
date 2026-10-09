@@ -41,6 +41,19 @@ public class SelfCheck {
         assert ServerNetMonitor.netEnabled : "netEnabled should be true when set";
         ServerNetMonitor.netEnabled = false;
 
+        // Test ChunkDeliveryMonitor
+        ChunkDeliveryMonitor.reset();
+        assert !ChunkDeliveryMonitor.isWaiting : "isWaiting should be false after reset";
+        assert ChunkDeliveryMonitor.currentWaitMs == 0.0 : "currentWaitMs should be 0 after reset";
+        assert ChunkDeliveryMonitor.peakDeliveryTimeMs == 0.0 : "peakDeliveryTimeMs should be 0 after reset";
+        assert ChunkDeliveryMonitor.HUD_W == 440 : "HUD_W should be 440";
+
+        boolean hudBefore = ChunkDeliveryMonitor.showOnScreenHud;
+        boolean toggled = ZBGamePerf.toggleChunkHud();
+        assert toggled == !hudBefore : "toggleChunkHud should invert state";
+        assert ZBGamePerf.isChunkHudActive() == toggled : "isChunkHudActive should match toggled state";
+        ZBGamePerf.toggleChunkHud(); // restore
+
         System.out.println("SelfCheck PASSED successfully!");
     }
 }

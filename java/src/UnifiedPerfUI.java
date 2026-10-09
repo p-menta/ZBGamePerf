@@ -40,6 +40,7 @@ public class UnifiedPerfUI {
     private static boolean wasCtrl7 = false;
     private static boolean wasCtrl0 = false;
     private static boolean wasCtrlP = false;
+    private static boolean wasCtrlH = false;
 
     public static boolean profileAllTabs = false; // When false, only active tab is measured
 
@@ -69,6 +70,7 @@ public class UnifiedPerfUI {
             boolean is7 = GameKeyboard.isKeyDown(Keyboard.KEY_7);
             boolean is0 = GameKeyboard.isKeyDown(Keyboard.KEY_0);
             boolean isP = GameKeyboard.isKeyDown(Keyboard.KEY_P);
+            boolean isH = GameKeyboard.isKeyDown(Keyboard.KEY_H);
 
             if (isCtrl && is1 && !wasCtrl1) toggleTab(0);
             wasCtrl1 = isCtrl && is1;
@@ -96,6 +98,11 @@ public class UnifiedPerfUI {
 
             if (isCtrl && isP && !wasCtrlP) toggleAllTabsProfiling();
             wasCtrlP = isCtrl && isP;
+
+            if (isCtrl && isH && !wasCtrlH) {
+                ChunkDeliveryMonitor.showOnScreenHud = !ChunkDeliveryMonitor.showOnScreenHud;
+            }
+            wasCtrlH = isCtrl && isH;
         } catch (Throwable ignored) {
         }
     }
@@ -255,16 +262,30 @@ public class UnifiedPerfUI {
 
     public static void render() {
         checkHotkeys();
-        if (!isOpen) return;
-
         var textMgr = TextManager.instance;
         var core = Core.getInstance();
         if (textMgr == null || core == null) return;
 
         int mx = Mouse.getXA();
         int my = Mouse.getYA();
+        boolean mouseDown = Mouse.isButtonDown(0);
+        boolean clicked = (mouseDown && !wasMouseDown) || Mouse.isLeftPressed();
 
         ServerNetMonitor.update();
+        if (activeTab == 4 || profileAllTabs || ChunkDeliveryMonitor.showOnScreenHud) {
+            ChunkDeliveryMonitor.update();
+        }
+
+        if (ChunkDeliveryMonitor.showOnScreenHud) {
+            ChunkDeliveryMonitor.handleHudMouse(mx, my, mouseDown, clicked);
+            renderChunkHud(textMgr);
+        }
+
+        if (!isOpen) {
+            wasMouseDown = mouseDown;
+            return;
+        }
+
         handleMouse(mx, my);
 
         int scrW = core.getScreenWidth();
@@ -333,6 +354,19 @@ public class UnifiedPerfUI {
                     return;
                 }
                 tabX += TAB_W + 4;
+            }
+
+            // HUD na Tela Toggle button (in Network tab)
+            if (activeTab == 4) {
+                int hudBtnW = 180;
+                int hudBtnH = 20;
+                int hudBtnX = winX + WIN_W - 12 - hudBtnW - 6;
+                int hudBtnY = winY + 64 + 3;
+                if (mx >= hudBtnX && mx <= hudBtnX + hudBtnW && my >= hudBtnY && my <= hudBtnY + hudBtnH) {
+                    ChunkDeliveryMonitor.showOnScreenHud = !ChunkDeliveryMonitor.showOnScreenHud;
+                    wasMouseDown = mouseDown;
+                    return;
+                }
             }
 
             // Mode button in footer
@@ -547,10 +581,40 @@ public class UnifiedPerfUI {
         int avgPing = (pingCount > 0) ? (sumPing / pingCount) : 0;
         double currentLoss = lossHist[59] * 100.0;
 
+        String chunkStatus;
+        if (ChunkDeliveryMonitor.isWaiting) {
+            chunkStatus = String.format(java.util.Locale.US,
+                "Chunks: %d/%d (%.0f%%) Espera: %.0fms",
+                ChunkDeliveryMonitor.loadedChunks, ChunkDeliveryMonitor.totalChunks,
+                ChunkDeliveryMonitor.syncPct, ChunkDeliveryMonitor.currentWaitMs);
+        } else if (ChunkDeliveryMonitor.totalDeliveries > 0) {
+            chunkStatus = String.format(java.util.Locale.US,
+                "Chunks: 100%% OK (Sync: %.0fms | Pico: %.0fms)",
+                ChunkDeliveryMonitor.lastDeliveryTimeMs, ChunkDeliveryMonitor.peakDeliveryTimeMs);
+        } else {
+            chunkStatus = String.format(java.util.Locale.US,
+                "Chunks: %d/%d (%.0f%%)",
+                ChunkDeliveryMonitor.loadedChunks, ChunkDeliveryMonitor.totalChunks,
+                ChunkDeliveryMonitor.syncPct);
+        }
+
         String label = String.format(java.util.Locale.US,
-            "RakNet Latency & Loss (Last 60s) | Current: %dms | Peak: %dms | Avg: %dms | Last Loss: %.1f%%",
-            currentPing, maxPing, avgPing, currentLoss);
+            "Ping: %dms (Méd: %dms, Pico: %dms) | Perda: %.1f%% | %s",
+            currentPing, avgPing, maxPing, currentLoss, chunkStatus);
         textMgr.DrawString(FONT_UI, gx + 10, gy + 5, label, 0.35, 0.9, 1.0, 1.0);
+
+        // On-Screen HUD Toggle button
+        int hudBtnW = 180;
+        int hudBtnH = 20;
+        int hudBtnX = gx + gw - hudBtnW - 6;
+        int hudBtnY = gy + 3;
+        boolean hudActive = ChunkDeliveryMonitor.showOnScreenHud;
+        float hbr = hudActive ? 0.18f : 0.28f;
+        float hbg = hudActive ? 0.50f : 0.20f;
+        float hbb = hudActive ? 0.25f : 0.22f;
+        SpriteRenderer.instance.renderRect(hudBtnX, hudBtnY, hudBtnW, hudBtnH, hbr, hbg, hbb, 1.0f);
+        String hudBtnText = hudActive ? "HUD na Tela: LIGADO (Ctrl+H)" : "HUD na Tela: DESLIGADO";
+        textMgr.DrawString(FONT_UI, hudBtnX + 8, hudBtnY + 3, hudBtnText, 1.0, 1.0, 1.0, 1.0);
 
         float barWidth = (float) (gw - 20) / 60.0f;
         int bh = gh - 32;
@@ -907,6 +971,28 @@ public class UnifiedPerfUI {
                 "STATUS: Single Player / Not connected to a Multiplayer Server", 0.9, 0.8, 0.4, 1.0);
             textMgr.DrawString(FONT_DATA, lx + 20, rowY + 32,
                 "(Network & RakNet metrics become active when connected to a LAN or Dedicated Server)", 0.6, 0.6, 0.6, 1.0);
+
+            rowY += 60;
+            renderTableHeader(textMgr, lx, rowY, lw, "Chunk Delivery & Streaming (Perimeter 100%)");
+            rowY += 21;
+            int row = 0;
+            String syncVal = String.format(java.util.Locale.US, "%d / %d (%.1f%%)",
+                ChunkDeliveryMonitor.loadedChunks, ChunkDeliveryMonitor.totalChunks, ChunkDeliveryMonitor.syncPct);
+            String syncState = ChunkDeliveryMonitor.isWaiting ? "AGUARDANDO CARREGAMENTO" : "100% SINCRONIZADO";
+            renderTableRow(textMgr, lx, rowY, lw, "Status do Perímetro :", syncVal, syncState, (row++ % 2 == 0));
+            rowY += 19;
+
+            String waitTime = ChunkDeliveryMonitor.isWaiting
+                ? String.format(java.util.Locale.US, "%.0f ms (carregando)", ChunkDeliveryMonitor.currentWaitMs)
+                : String.format(java.util.Locale.US, "%.0f ms (último sync)", ChunkDeliveryMonitor.lastDeliveryTimeMs);
+            String peakTime = String.format(java.util.Locale.US, "Pico: %.0f ms | Média: %.0f ms",
+                ChunkDeliveryMonitor.peakDeliveryTimeMs, ChunkDeliveryMonitor.avgDeliveryTimeMs);
+            renderTableRow(textMgr, lx, rowY, lw, "Tempo Espera 100% Chunks :", waitTime, peakTime, (row++ % 2 == 0));
+            rowY += 19;
+
+            String inFlight = ChunkDeliveryMonitor.inFlightRequests + " requisições pendentes";
+            String queueStr = ChunkDeliveryMonitor.loadQueueSize + " chunks na fila de descompressão";
+            renderTableRow(textMgr, lx, rowY, lw, "Fila de Chunks (Disco) :", inFlight, queueStr, (row++ % 2 == 0));
             return;
         }
 
@@ -953,6 +1039,29 @@ public class UnifiedPerfUI {
             String congSrv = (r.bpsLimit > 0) ? (ModDataMonitor.formatBytes(r.bpsLimit) + "/s") : "-";
             renderTableRow(textMgr, lx, rowY, lw, "Congestion Control :", cong, congSrv, (row++ % 2 == 0));
             rowY += 19;
+
+            rowY += 6;
+            renderTableHeader(textMgr, lx, rowY, lw, "Chunk Delivery & Streaming (Perimeter 100%)");
+            rowY += 21;
+
+            String syncVal = String.format(java.util.Locale.US, "%d / %d (%.1f%%)",
+                ChunkDeliveryMonitor.loadedChunks, ChunkDeliveryMonitor.totalChunks, ChunkDeliveryMonitor.syncPct);
+            String syncState = ChunkDeliveryMonitor.isWaiting ? "AGUARDANDO ENTREGA" : "100% SINCRONIZADO";
+            renderTableRow(textMgr, lx, rowY, lw, "Status do Perímetro :", syncVal, syncState, (row++ % 2 == 0));
+            rowY += 19;
+
+            String waitTime = ChunkDeliveryMonitor.isWaiting
+                ? String.format(java.util.Locale.US, "%.0f ms (esperando)", ChunkDeliveryMonitor.currentWaitMs)
+                : String.format(java.util.Locale.US, "%.0f ms (último sync)", ChunkDeliveryMonitor.lastDeliveryTimeMs);
+            String peakTime = String.format(java.util.Locale.US, "Pico: %.0f ms | Média: %.0f ms",
+                ChunkDeliveryMonitor.peakDeliveryTimeMs, ChunkDeliveryMonitor.avgDeliveryTimeMs);
+            renderTableRow(textMgr, lx, rowY, lw, "Tempo Espera 100% Chunks :", waitTime, peakTime, (row++ % 2 == 0));
+            rowY += 19;
+
+            String inFlight = ChunkDeliveryMonitor.inFlightRequests + " pacotes em trânsito (WorldStreamer)";
+            String queueStr = ChunkDeliveryMonitor.loadQueueSize + " chunks na fila de descompressão";
+            renderTableRow(textMgr, lx, rowY, lw, "Fila de Chunks (Rede/Disco) :", inFlight, queueStr, (row++ % 2 == 0));
+            rowY += 19;
         } else {
             textMgr.DrawString(FONT_DATA, lx + 20, rowY,
                 "--- RAKNET LOW-LEVEL UDP TRANSPORT & PHYSICAL WIRE METRICS ---", 0.35, 0.85, 1.0, 1.0);
@@ -996,6 +1105,24 @@ public class UnifiedPerfUI {
                 "Game Application Bandwidth: TX: %s/s   |  RX: %s/s",
                 ModDataMonitor.formatBytes((long) r.clientGameTxKb), ModDataMonitor.formatBytes((long) r.clientGameRxKb));
             textMgr.DrawString(FONT_DATA, lx + 20, rowY, l6, 0.9, 0.9, 0.9, 1.0);
+            rowY += 20;
+
+            rowY += 8;
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY,
+                "--- CHUNK DELIVERY & STREAMING (100% PERIMETER) ---", 0.7, 0.75, 0.85, 1.0);
+            rowY += 22;
+            String chunkDeliveryInfo = String.format(java.util.Locale.US,
+                "Perímetro: %d/%d (%.1f%%) | Espera Atual: %.0fms | Última: %.0fms | Pico: %.0fms | Média: %.0fms",
+                ChunkDeliveryMonitor.loadedChunks, ChunkDeliveryMonitor.totalChunks, ChunkDeliveryMonitor.syncPct,
+                ChunkDeliveryMonitor.currentWaitMs, ChunkDeliveryMonitor.lastDeliveryTimeMs,
+                ChunkDeliveryMonitor.peakDeliveryTimeMs, ChunkDeliveryMonitor.avgDeliveryTimeMs);
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY, chunkDeliveryInfo, 0.4, 0.95, 0.65, 1.0);
+            rowY += 20;
+            String chunkQueueInfo = String.format(java.util.Locale.US,
+                "Requisições em trânsito (sentRequests): %d | Fila de descompressão: %d",
+                ChunkDeliveryMonitor.inFlightRequests, ChunkDeliveryMonitor.loadQueueSize);
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY, chunkQueueInfo, 0.8, 0.85, 0.9, 1.0);
+            rowY += 20;
         }
     }
 
@@ -1101,5 +1228,53 @@ public class UnifiedPerfUI {
             textMgr.DrawString(FONT_DATA, lx, rowY, line, r, g, b, 1.0);
             rowY += 20;
         }
+    }
+
+    private static void renderChunkHud(TextManager textMgr) {
+        int hx = ChunkDeliveryMonitor.hudX;
+        int hy = ChunkDeliveryMonitor.hudY;
+        int hw = ChunkDeliveryMonitor.HUD_W;
+        int hh = ChunkDeliveryMonitor.HUD_H;
+
+        // Background
+        SpriteRenderer.instance.renderRect(hx, hy, hw, hh, 0.07f, 0.08f, 0.12f, 0.92f);
+
+        boolean waiting = ChunkDeliveryMonitor.isWaiting;
+        // Status accent line on left
+        float ar = waiting ? 1.0f : 0.25f;
+        float ag = waiting ? 0.75f : 0.95f;
+        float ab = waiting ? 0.2f : 0.45f;
+        SpriteRenderer.instance.renderRect(hx, hy, 4, hh, ar, ag, ab, 1.0f);
+
+        ServerNetMonitor.RakNetSnapshot r = ServerNetMonitor.getRakNetSnapshot();
+        int ping = r.isConnected ? r.lastPing : -1;
+        String pingStr = (ping >= 0) ? (ping + "ms") : "SP";
+
+        String text;
+        if (waiting) {
+            text = String.format(java.util.Locale.US,
+                "[CHUNKS: %d/%d (%.0f%%)] Esperando: %.0fms (Pico: %.0fms) | Ping: %s",
+                ChunkDeliveryMonitor.loadedChunks, ChunkDeliveryMonitor.totalChunks,
+                ChunkDeliveryMonitor.syncPct, ChunkDeliveryMonitor.currentWaitMs,
+                ChunkDeliveryMonitor.peakDeliveryTimeMs, pingStr);
+        } else if (ChunkDeliveryMonitor.totalDeliveries > 0) {
+            text = String.format(java.util.Locale.US,
+                "[CHUNKS: 100%% OK] Entregue: %.0fms (Pico: %.0fms) | Ping: %s",
+                ChunkDeliveryMonitor.lastDeliveryTimeMs, ChunkDeliveryMonitor.peakDeliveryTimeMs, pingStr);
+        } else {
+            text = String.format(java.util.Locale.US,
+                "[CHUNKS: 100%% OK] Sincronizado | Ping: %s", pingStr);
+        }
+
+        double tr = waiting ? 1.0 : 0.45;
+        double tg = waiting ? 0.9 : 1.0;
+        double tb = waiting ? 0.4 : 0.6;
+        textMgr.DrawString(FONT_UI, hx + 10, hy + 5, text, tr, tg, tb, 1.0);
+
+        // Close button [x]
+        int closeX = hx + hw - 18;
+        int closeY = hy + 4;
+        SpriteRenderer.instance.renderRect(closeX, closeY, 14, 14, 0.35f, 0.15f, 0.15f, 0.9f);
+        textMgr.DrawString(FONT_UI, closeX + 3, closeY, "x", 0.9, 0.9, 0.9, 1.0);
     }
 }

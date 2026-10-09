@@ -150,6 +150,7 @@ public class ZBGamePerf {
         CommandMonitor.reset();
         LoadGridSquareMonitor.reset();
         ServerNetMonitor.reset();
+        ChunkDeliveryMonitor.reset();
     }
 
     public static void setLogWhenOSDOff(boolean enabled) {
@@ -205,5 +206,14 @@ public class ZBGamePerf {
     public static boolean toggleProfileAllTabs() {
         UnifiedPerfUI.toggleAllTabsProfiling();
         return UnifiedPerfUI.profileAllTabs;
+    }
+
+    public static boolean toggleChunkHud() {
+        ChunkDeliveryMonitor.showOnScreenHud = !ChunkDeliveryMonitor.showOnScreenHud;
+        return ChunkDeliveryMonitor.showOnScreenHud;
+    }
+
+    public static boolean isChunkHudActive() {
+        return ChunkDeliveryMonitor.showOnScreenHud;
     }
 }
