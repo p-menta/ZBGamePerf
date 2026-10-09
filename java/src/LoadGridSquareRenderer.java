@@ -97,7 +97,7 @@ public class LoadGridSquareRenderer {
 
                     String location = entry.info.relativePath + ":" + entry.info.line;
                     String line = String.format(java.util.Locale.US,
-                        "  %-10s %-32s : %6d calls (%4.1f/s) | Total: %6.1fms | Avg: %5.1fµs | Max: %5.1fms",
+                        "  %-10s %-32s : %6d calls (%4.1f/s) | Total: %6.1fms | Avg: %5.1fus | Max: %5.1fms",
                         prefixStr, location, entry.totalCount, ratePerSec, totalMs, avgUs, maxMs);
 
                     double r, g, b;
