@@ -215,8 +215,11 @@ public class UnifiedPerfUI {
         var core = Core.getInstance();
         if (textMgr == null || core == null) return;
 
+        int mx = Mouse.getXA();
+        int my = Mouse.getYA();
+
         ServerNetMonitor.update();
-        handleMouse();
+        handleMouse(mx, my);
 
         int scrW = core.getScreenWidth();
         int scrH = core.getScreenHeight();
@@ -230,7 +233,7 @@ public class UnifiedPerfUI {
         textMgr.DrawString(FONT_UI, winX + 12, winY + 6, "ZBGamePerf - Unified Performance Monitor", 0.9, 0.9, 0.95, 1.0);
 
         // Tabs
-        renderTabs(textMgr);
+        renderTabs(textMgr, mx, my);
 
         // Top Section: Graph
         renderGraph(textMgr);
@@ -239,14 +242,12 @@ public class UnifiedPerfUI {
         renderList(textMgr);
 
         // Footer Section: Mode switcher & info
-        renderFooter(textMgr);
+        renderFooter(textMgr, mx, my);
     }
 
-    private static void handleMouse() {
-        int mx = Mouse.getX();
-        int my = Mouse.getY();
+    private static void handleMouse(int mx, int my) {
         boolean mouseDown = Mouse.isButtonDown(0);
-        boolean clicked = mouseDown && !wasMouseDown;
+        boolean clicked = (mouseDown && !wasMouseDown) || Mouse.isLeftPressed();
 
         if (clicked) {
             // Close button
@@ -267,6 +268,18 @@ public class UnifiedPerfUI {
                 return;
             }
 
+            // Tabs
+            int tabX = winX + 12;
+            for (int i = 0; i < TABS.length; i++) {
+                if (mx >= tabX && mx <= tabX + TAB_W && my >= winY + 34 && my <= winY + 34 + TAB_H) {
+                    activeTab = i;
+                    syncProfilingState();
+                    wasMouseDown = mouseDown;
+                    return;
+                }
+                tabX += TAB_W + 4;
+            }
+
             // Mode button in footer
             int btnX = winX + 12;
             int btnY = winY + WIN_H - 34;
@@ -276,16 +289,6 @@ public class UnifiedPerfUI {
                 cycleActiveTabMode();
                 wasMouseDown = mouseDown;
                 return;
-            }
-
-            // Tabs
-            int tabX = winX + 12;
-            for (int i = 0; i < TABS.length; i++) {
-                if (mx >= tabX && mx <= tabX + TAB_W && my >= winY + 34 && my <= winY + 34 + TAB_H) {
-                    activeTab = i;
-                    break;
-                }
-                tabX += TAB_W + 4;
             }
 
             // Dragging header
@@ -306,20 +309,22 @@ public class UnifiedPerfUI {
         wasMouseDown = mouseDown;
     }
 
-    private static void renderTabs(TextManager textMgr) {
+    private static void renderTabs(TextManager textMgr, int mx, int my) {
         int tabX = winX + 12;
         int tabY = winY + 34;
 
         for (int i = 0; i < TABS.length; i++) {
             boolean active = (i == activeTab);
-            float r = active ? 0.22f : 0.14f;
-            float g = active ? 0.38f : 0.16f;
-            float b = active ? 0.55f : 0.22f;
+            boolean hovered = (mx >= tabX && mx <= tabX + TAB_W && my >= tabY && my <= tabY + TAB_H);
+
+            float r = active ? 0.22f : (hovered ? 0.25f : 0.14f);
+            float g = active ? 0.38f : (hovered ? 0.30f : 0.16f);
+            float b = active ? 0.55f : (hovered ? 0.42f : 0.22f);
 
             SpriteRenderer.instance.renderRect(tabX, tabY, TAB_W, TAB_H, r, g, b, 1.0f);
-            double tr = active ? 1.0 : 0.75;
-            double tg = active ? 1.0 : 0.75;
-            double tb = active ? 1.0 : 0.85;
+            double tr = active ? 1.0 : (hovered ? 0.95 : 0.75);
+            double tg = active ? 1.0 : (hovered ? 0.95 : 0.75);
+            double tb = active ? 1.0 : (hovered ? 0.95 : 0.85);
             textMgr.DrawString(FONT_UI, tabX + 8, tabY + 4, TABS[i], tr, tg, tb, 1.0);
             tabX += TAB_W + 4;
         }
@@ -327,12 +332,16 @@ public class UnifiedPerfUI {
         // Reset button
         int resetW = 115;
         int resetX = winX + WIN_W - resetW - 14;
-        SpriteRenderer.instance.renderRect(resetX, tabY, resetW, TAB_H, 0.35f, 0.16f, 0.16f, 1.0f);
+        boolean resetHover = (mx >= resetX && mx <= resetX + resetW && my >= tabY && my <= tabY + TAB_H);
+        float rr = resetHover ? 0.50f : 0.35f;
+        SpriteRenderer.instance.renderRect(resetX, tabY, resetW, TAB_H, rr, 0.16f, 0.16f, 1.0f);
         textMgr.DrawString(FONT_UI, resetX + 10, tabY + 4, "Clear (Ctrl+0)", 1.0, 0.8, 0.8, 1.0);
 
         // Close button [X]
         int closeX = winX + WIN_W - 28;
-        SpriteRenderer.instance.renderRect(closeX, winY + 4, 22, 22, 0.5f, 0.15f, 0.15f, 0.9f);
+        boolean closeHover = (mx >= closeX && mx <= closeX + 22 && my >= winY + 4 && my <= winY + 26);
+        float cr = closeHover ? 0.70f : 0.50f;
+        SpriteRenderer.instance.renderRect(closeX, winY + 4, 22, 22, cr, 0.15f, 0.15f, 0.9f);
         textMgr.DrawString(FONT_UI, closeX + 7, winY + 3, "X", 1.0, 1.0, 1.0, 1.0);
     }
 
@@ -600,15 +609,13 @@ public class UnifiedPerfUI {
         }
     }
 
-    private static void renderFooter(TextManager textMgr) {
+    private static void renderFooter(TextManager textMgr, int mx, int my) {
         int fy = winY + WIN_H - 34;
         int fw = WIN_W - 24;
 
         // Separator line
         SpriteRenderer.instance.renderRect(winX + 12, fy - 3, fw, 1, 0.18f, 0.2f, 0.25f, 0.8f);
 
-        int mx = Mouse.getX();
-        int my = Mouse.getY();
         int btnX = winX + 12;
         int btnY = fy;
         int btnW = 240;
