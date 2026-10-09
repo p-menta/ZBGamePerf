@@ -36,6 +36,11 @@ public class ServerNetMonitor {
     private static volatile ServerWorldSnapshot cachedServerWorld = new ServerWorldSnapshot();
     private static volatile PoolsSnapshot cachedPools = new PoolsSnapshot();
 
+    // Modular measurement control flags
+    public static volatile boolean netEnabled = false;
+    public static volatile boolean serverWorldEnabled = false;
+    public static volatile boolean poolsEnabled = false;
+
     public static class RakNetSnapshot {
         public boolean isConnected;
         public int lastPing;
@@ -144,6 +149,8 @@ public class ServerNetMonitor {
     }
 
     public static synchronized void update() {
+        if (!netEnabled && !serverWorldEnabled && !poolsEnabled) return;
+
         long sec = System.currentTimeMillis() / 1000L;
         if (sec == lastSampleSecond) return;
 
@@ -151,58 +158,68 @@ public class ServerNetMonitor {
             long diff = Math.min(sec - lastSampleSecond, 60L);
             for (long s = 1; s <= diff; s++) {
                 int idx = (int) ((lastSampleSecond + s) % 60);
-                historyPing[idx] = 0;
-                historyLoss[idx] = 0;
-                historyWireTx[idx] = 0;
-                historyWireRx[idx] = 0;
-                historyClientFps[idx] = 0;
-                historyServerFps[idx] = 0;
-                historyClientMem[idx] = 0;
-                historyServerMem[idx] = 0;
-                historyPoolsUsed[idx] = 0;
+                if (netEnabled) {
+                    historyPing[idx] = 0;
+                    historyLoss[idx] = 0;
+                    historyWireTx[idx] = 0;
+                    historyWireRx[idx] = 0;
+                }
+                if (serverWorldEnabled) {
+                    historyClientFps[idx] = 0;
+                    historyServerFps[idx] = 0;
+                    historyClientMem[idx] = 0;
+                    historyServerMem[idx] = 0;
+                }
+                if (poolsEnabled) {
+                    historyPoolsUsed[idx] = 0;
+                }
             }
         }
         lastSampleSecond = sec;
         int idx = (int) (sec % 60);
 
         // Network / RakNet sampling
-        if (GameClient.client && GameClient.connection != null) {
-            historyPing[idx] = GameClient.connection.getLastPing();
-            ZNetStatistics stats = GameClient.connection.getStatistics();
-            if (stats != null) {
-                historyLoss[idx] = stats.packetlossLastSecond;
-                historyWireTx[idx] = stats.lastActualBytesSent;
-                historyWireRx[idx] = stats.lastActualBytesReceived;
+        if (netEnabled) {
+            if (GameClient.client && GameClient.connection != null) {
+                historyPing[idx] = GameClient.connection.getLastPing();
+                ZNetStatistics stats = GameClient.connection.getStatistics();
+                if (stats != null) {
+                    historyLoss[idx] = stats.packetlossLastSecond;
+                    historyWireTx[idx] = stats.lastActualBytesSent;
+                    historyWireRx[idx] = stats.lastActualBytesReceived;
+                }
             }
+            cachedRakNet = buildRakNetSnapshot();
         }
 
         // FPS & RAM sampling
-        historyClientFps[idx] = Math.round(GameWindow.averageFPS);
-        Runtime rt = Runtime.getRuntime();
-        historyClientMem[idx] = (rt.totalMemory() - rt.freeMemory()) / (1024L * 1024L);
+        if (serverWorldEnabled) {
+            historyClientFps[idx] = Math.round(GameWindow.averageFPS);
+            Runtime rt = Runtime.getRuntime();
+            historyClientMem[idx] = (rt.totalMemory() - rt.freeMemory()) / (1024L * 1024L);
 
-        KahluaTable remotePerf = PerformanceStatistic.getInstance().getRemoteTable();
-        if (remotePerf != null) {
-            double sFps = getDouble(remotePerf, "fps", -1);
-            if (sFps >= 0) historyServerFps[idx] = (int) Math.round(sFps);
-            double sMem = getDouble(remotePerf, "memory-used", -1);
-            if (sMem >= 0) historyServerMem[idx] = (long) sMem;
+            KahluaTable remotePerf = PerformanceStatistic.getInstance().getRemoteTable();
+            if (remotePerf != null) {
+                double sFps = getDouble(remotePerf, "fps", -1);
+                if (sFps >= 0) historyServerFps[idx] = (int) Math.round(sFps);
+                double sMem = getDouble(remotePerf, "memory-used", -1);
+                if (sMem >= 0) historyServerMem[idx] = (long) sMem;
+            }
+            cachedServerWorld = buildServerWorldSnapshot();
+
+            // Periodically refresh remote server statistics if on MP
+            if (GameClient.client && (sec % 2 == 0)) {
+                requestServerStatistics();
+            }
         }
 
         // Pools sampling
-        try {
-            historyPoolsUsed[idx] = (long) PerformanceStatistic.getInstance().allPoolsInUse.get();
-        } catch (Throwable ignored) {
-        }
-
-        // Rebuild 1-second cached snapshots
-        cachedRakNet = buildRakNetSnapshot();
-        cachedServerWorld = buildServerWorldSnapshot();
-        cachedPools = buildPoolsSnapshot();
-
-        // Periodically refresh remote server statistics if on MP
-        if (GameClient.client && (sec % 2 == 0)) {
-            requestServerStatistics();
+        if (poolsEnabled) {
+            try {
+                historyPoolsUsed[idx] = (long) PerformanceStatistic.getInstance().allPoolsInUse.get();
+            } catch (Throwable ignored) {
+            }
+            cachedPools = buildPoolsSnapshot();
         }
     }
 

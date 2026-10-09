@@ -197,4 +197,13 @@ public class ZBGamePerf {
     public static boolean getTrackInternalPerformance() {
         return PerformanceMonitor.trackInternalPerformance;
     }
+
+    public static boolean isProfileAllTabs() {
+        return UnifiedPerfUI.profileAllTabs;
+    }
+
+    public static boolean toggleProfileAllTabs() {
+        UnifiedPerfUI.toggleAllTabsProfiling();
+        return UnifiedPerfUI.profileAllTabs;
+    }
 }

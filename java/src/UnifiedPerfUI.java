@@ -39,6 +39,9 @@ public class UnifiedPerfUI {
     private static boolean wasCtrl6 = false;
     private static boolean wasCtrl7 = false;
     private static boolean wasCtrl0 = false;
+    private static boolean wasCtrlP = false;
+
+    public static boolean profileAllTabs = false; // When false, only active tab is measured
 
     private static int netTabMode = 1;     // 1=RakNet & Wire, 2=Game & VoIP
     private static int serverTabMode = 1;  // 1=Performance & RAM, 2=World & Entities
@@ -65,6 +68,7 @@ public class UnifiedPerfUI {
             boolean is6 = GameKeyboard.isKeyDown(Keyboard.KEY_6);
             boolean is7 = GameKeyboard.isKeyDown(Keyboard.KEY_7);
             boolean is0 = GameKeyboard.isKeyDown(Keyboard.KEY_0);
+            boolean isP = GameKeyboard.isKeyDown(Keyboard.KEY_P);
 
             if (isCtrl && is1 && !wasCtrl1) toggleTab(0);
             wasCtrl1 = isCtrl && is1;
@@ -89,8 +93,19 @@ public class UnifiedPerfUI {
 
             if (isCtrl && is0 && !wasCtrl0) ZBGamePerf.resetStats();
             wasCtrl0 = isCtrl && is0;
+
+            if (isCtrl && isP && !wasCtrlP) toggleAllTabsProfiling();
+            wasCtrlP = isCtrl && isP;
         } catch (Throwable ignored) {
         }
+    }
+
+    public static void toggleAllTabsProfiling() {
+        profileAllTabs = !profileAllTabs;
+        if (!isOpen) {
+            isOpen = true;
+        }
+        syncProfilingState();
     }
 
     private static void toggleTab(int tab) {
@@ -106,15 +121,43 @@ public class UnifiedPerfUI {
     }
 
     public static void syncProfilingState() {
-        ZBGamePerf.osdEnabled = isOpen;
-        ZBGamePerf.modDataOsdEnabled = isOpen;
-        ZBGamePerf.commandOsdEnabled = isOpen;
-        ZBGamePerf.loadGridSquareOsdEnabled = isOpen;
-        if (isOpen) {
-            if (ZBGamePerf.osdMode == 0) ZBGamePerf.osdMode = 1;
-            if (ZBGamePerf.modDataOsdMode == 0) ZBGamePerf.modDataOsdMode = 1;
-            if (ZBGamePerf.commandOsdMode == 0) ZBGamePerf.commandOsdMode = 1;
-            if (ZBGamePerf.loadGridSquareOsdMode == 0) ZBGamePerf.loadGridSquareOsdMode = 1;
+        if (!isOpen) {
+            ZBGamePerf.osdEnabled = false;
+            ZBGamePerf.modDataOsdEnabled = false;
+            ZBGamePerf.commandOsdEnabled = false;
+            ZBGamePerf.loadGridSquareOsdEnabled = false;
+            ServerNetMonitor.netEnabled = false;
+            ServerNetMonitor.serverWorldEnabled = false;
+            ServerNetMonitor.poolsEnabled = false;
+            return;
+        }
+
+        if (profileAllTabs) {
+            // All tabs profile simultaneously
+            ZBGamePerf.osdEnabled = true;
+            ZBGamePerf.modDataOsdEnabled = true;
+            ZBGamePerf.commandOsdEnabled = true;
+            ZBGamePerf.loadGridSquareOsdEnabled = true;
+            ServerNetMonitor.netEnabled = true;
+            ServerNetMonitor.serverWorldEnabled = true;
+            ServerNetMonitor.poolsEnabled = true;
+        } else {
+            // Modular mode: Only the active tab profiles!
+            ZBGamePerf.osdEnabled = (activeTab == 0);
+            ZBGamePerf.modDataOsdEnabled = (activeTab == 1);
+            ZBGamePerf.commandOsdEnabled = (activeTab == 2);
+            ZBGamePerf.loadGridSquareOsdEnabled = (activeTab == 3);
+            ServerNetMonitor.netEnabled = (activeTab == 4);
+            ServerNetMonitor.serverWorldEnabled = (activeTab == 5);
+            ServerNetMonitor.poolsEnabled = (activeTab == 6);
+        }
+
+        if (ZBGamePerf.osdMode == 0) ZBGamePerf.osdMode = 1;
+        if (ZBGamePerf.modDataOsdMode == 0) ZBGamePerf.modDataOsdMode = 1;
+        if (ZBGamePerf.commandOsdMode == 0) ZBGamePerf.commandOsdMode = 1;
+        if (ZBGamePerf.loadGridSquareOsdMode == 0) ZBGamePerf.loadGridSquareOsdMode = 1;
+
+        if (profileAllTabs || activeTab == 4 || activeTab == 5) {
             ServerNetMonitor.requestServerStatistics();
         }
     }
@@ -262,6 +305,15 @@ public class UnifiedPerfUI {
                 return;
             }
 
+            // Profiling Mode Toggle button [Ctrl+P]
+            int profBtnW = 280;
+            int profBtnX = winX + WIN_W - 35 - profBtnW;
+            if (mx >= profBtnX && mx <= profBtnX + profBtnW && my >= winY + 4 && my <= winY + 26) {
+                toggleAllTabsProfiling();
+                wasMouseDown = mouseDown;
+                return;
+            }
+
             // Reset button
             int resetW = 115;
             int resetX = winX + WIN_W - resetW - 14;
@@ -339,6 +391,29 @@ public class UnifiedPerfUI {
         float rr = resetHover ? 0.50f : 0.35f;
         SpriteRenderer.instance.renderRect(resetX, tabY, resetW, TAB_H, rr, 0.16f, 0.16f, 1.0f);
         textMgr.DrawString(FONT_UI, resetX + 10, tabY + 4, "Clear (Ctrl+0)", 1.0, 0.8, 0.8, 1.0);
+
+        // Profiling Mode Toggle Button [Ctrl+P]
+        int profBtnW = 280;
+        int profBtnX = winX + WIN_W - 35 - profBtnW;
+        int profBtnY = winY + 4;
+        int profBtnH = 22;
+        boolean profHover = (mx >= profBtnX && mx <= profBtnX + profBtnW && my >= profBtnY && my <= profBtnY + profBtnH);
+
+        float pbr, pbg, pbb;
+        String profLabel;
+        if (profileAllTabs) {
+            pbr = profHover ? 0.20f : 0.14f;
+            pbg = profHover ? 0.55f : 0.40f;
+            pbb = profHover ? 0.35f : 0.22f;
+            profLabel = "Aferição: TODAS AS ABAS (Ctrl+P)";
+        } else {
+            pbr = profHover ? 0.22f : 0.16f;
+            pbg = profHover ? 0.36f : 0.26f;
+            pbb = profHover ? 0.55f : 0.42f;
+            profLabel = "Aferição: ABA ATUAL (Modular) (Ctrl+P)";
+        }
+        SpriteRenderer.instance.renderRect(profBtnX, profBtnY, profBtnW, profBtnH, pbr, pbg, pbb, 1.0f);
+        textMgr.DrawString(FONT_UI, profBtnX + 10, profBtnY + 3, profLabel, 1.0, 1.0, 1.0, 1.0);
 
         // Close button [X]
         int closeX = winX + WIN_W - 28;
@@ -633,6 +708,12 @@ public class UnifiedPerfUI {
         textMgr.DrawString(FONT_UI, btnX + 10, btnY + 4, getModeButtonLabel() + "  [+]", 1.0, 1.0, 1.0, 1.0);
         textMgr.DrawString(FONT_UI, btnX + btnW + 10, btnY + 4, "(Click to cycle)", 0.5, 0.55, 0.65, 1.0);
         textMgr.DrawString(FONT_UI, btnX + btnW + 130, btnY + 4, "|  " + getModeDescription(), 0.75, 0.8, 0.85, 1.0);
+
+        String profStatus = profileAllTabs ? "[Aferindo: TODAS AS ABAS]" : "[Aferindo: ABA ATUAL]";
+        double psR = profileAllTabs ? 0.4 : 0.5;
+        double psG = profileAllTabs ? 1.0 : 0.85;
+        double psB = profileAllTabs ? 0.6 : 1.0;
+        textMgr.DrawString(FONT_UI, winX + WIN_W - 220, btnY + 4, profStatus, psR, psG, psB, 1.0);
     }
 
     private static void renderLuaList(TextManager textMgr, int lx, int rowY) {

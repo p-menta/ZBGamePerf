@@ -32,6 +32,15 @@ public class SelfCheck {
         list.sort((a, b) -> Long.compare(b.alloc, a.alloc));
         assert list.get(0).name.equals("ItemB") : "ItemB should be first by alloc";
 
+        // Test modular flags on ServerNetMonitor
+        assert !ServerNetMonitor.netEnabled : "netEnabled should default to false";
+        assert !ServerNetMonitor.serverWorldEnabled : "serverWorldEnabled should default to false";
+        assert !ServerNetMonitor.poolsEnabled : "poolsEnabled should default to false";
+
+        ServerNetMonitor.netEnabled = true;
+        assert ServerNetMonitor.netEnabled : "netEnabled should be true when set";
+        ServerNetMonitor.netEnabled = false;
+
         System.out.println("SelfCheck PASSED successfully!");
     }
 }
