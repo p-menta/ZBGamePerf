@@ -149,6 +149,7 @@ public class ZBGamePerf {
         ModDataMonitor.reset();
         CommandMonitor.reset();
         LoadGridSquareMonitor.reset();
+        ServerNetMonitor.reset();
     }
 
     public static void setLogWhenOSDOff(boolean enabled) {

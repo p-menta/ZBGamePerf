@@ -22,6 +22,10 @@ dependencies {
     compileOnly files("${PZ_DIR}/ZombieBuddy.jar")
     compileOnly files("${PZ_DIR}/projectzomboid.jar")
     compileOnly files("${PZ_DIR}")
+    testImplementation files("${PZ_DIR}/ZombieBuddy.jar")
+    testImplementation files("${PZ_DIR}/projectzomboid.jar")
+    testImplementation files("${PZ_DIR}")
+    testImplementation sourceSets.main.output
 }
 
 repositories {
@@ -35,7 +39,24 @@ sourceSets {
             include '**/*.java'
         }
     }
+    test {
+        java {
+            srcDirs = ['test']
+            include '**/*.java'
+        }
+    }
 }
+
+tasks.register('selfCheck', JavaExec) {
+    dependsOn compileTestJava
+    classpath = sourceSets.test.runtimeClasspath + sourceSets.main.output
+    mainClass = 'me.p_menta.zb_game_perf.SelfCheck'
+    jvmArgs = ['-ea']
+    javaLauncher = javaToolchains.launcherFor(java.toolchain)
+}
+
+check.dependsOn selfCheck
+test.enabled = false
 
 tasks.withType(JavaCompile).configureEach {
     options.annotationProcessorPath = files()
