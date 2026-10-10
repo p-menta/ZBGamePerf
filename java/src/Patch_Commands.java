@@ -38,8 +38,24 @@ public class Patch_Commands {
             }
             try {
                 String[] mc = CommandMonitor.peekModuleCommand(bb.bb, startPos);
-                if ("ZBGamePerf".equals(mc[0]) && "Pong".equals(mc[1])) {
-                    CommandPingMonitor.onPongReceived();
+                if ("ZBGamePerf".equals(mc[0])) {
+                    if ("Pong".equals(mc[1])) {
+                        CommandPingMonitor.onPongReceived();
+                    } else if ("ResLuaCalls".equals(mc[1])) {
+                        java.nio.ByteBuffer dup = bb.bb.duplicate();
+                        dup.position(startPos);
+                        ByteBufferReader r = new ByteBufferReader(dup);
+                        r.getUTF(); // module
+                        r.getUTF(); // command
+                        if (r.getBoolean()) { // hasTable
+                            se.krka.kahlua.vm.KahluaTable table = zombie.Lua.LuaManager.platform.newTable();
+                            zombie.network.TableNetworkUtils.load(table, r);
+                            Object data = table.rawget("data");
+                            if (data instanceof String) {
+                                ServerLuaMonitor.onDataReceived((String) data);
+                            }
+                        }
+                    }
                 }
                 if (ZBGamePerf.commandOsdEnabled) {
                     int bytes = Math.max(0, bb.bb.position() - startPos);
@@ -68,8 +84,27 @@ public class Patch_Commands {
                 r.getByte(); // skip playerIndex
                 String module = r.getUTF();
                 String command = r.getUTF();
-                if ("ZBGamePerf".equals(module) && "Ping".equals(command)) {
-                    zombie.network.GameServer.sendServerCommand("ZBGamePerf", "Pong", (se.krka.kahlua.vm.KahluaTable) null, connection);
+                if ("ZBGamePerf".equals(module)) {
+                    if ("Ping".equals(command)) {
+                        zombie.network.GameServer.sendServerCommand("ZBGamePerf", "Pong", (se.krka.kahlua.vm.KahluaTable) null, connection);
+                    } else if ("ReqLuaCalls".equals(command)) {
+                        PerformanceMonitor.serverLuaProfilingActive = true;
+                        PerformanceMonitor.lastServerLuaRequestTimeMs = System.currentTimeMillis();
+                        int reqMode = 1;
+                        int topN = 15;
+                        if (r.getBoolean()) { // hasTable
+                            se.krka.kahlua.vm.KahluaTable reqTable = zombie.Lua.LuaManager.platform.newTable();
+                            zombie.network.TableNetworkUtils.load(reqTable, r);
+                            Object mObj = reqTable.rawget("mode");
+                            if (mObj instanceof Double) reqMode = ((Double) mObj).intValue();
+                            Object nObj = reqTable.rawget("topN");
+                            if (nObj instanceof Double) topN = ((Double) nObj).intValue();
+                        }
+                        String payload = PerformanceMonitor.packTopCalls(reqMode, topN);
+                        se.krka.kahlua.vm.KahluaTable respTable = zombie.Lua.LuaManager.platform.newTable();
+                        respTable.rawset("data", payload);
+                        zombie.network.GameServer.sendServerCommand("ZBGamePerf", "ResLuaCalls", respTable, connection);
+                    }
                 }
             } catch (Throwable ignored) {
             }

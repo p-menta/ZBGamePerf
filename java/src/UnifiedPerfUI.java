@@ -283,6 +283,7 @@ public class UnifiedPerfUI {
             ChunkDeliveryMonitor.update();
         }
         CommandPingMonitor.update();
+        ServerLuaMonitor.update();
 
         if (ChunkDeliveryMonitor.showOnScreenHud) {
             ChunkDeliveryMonitor.handleHudMouse(mx, my, mouseDown, clicked);
@@ -362,6 +363,19 @@ public class UnifiedPerfUI {
                     return;
                 }
                 tabX += TAB_W + 4;
+            }
+
+            // Source Toggle button (in Lua tab)
+            if (activeTab == 0) {
+                int srcBtnW = 160;
+                int srcBtnH = 20;
+                int srcBtnX = winX + WIN_W - 12 - srcBtnW - 6;
+                int srcBtnY = winY + 64 + 3;
+                if (mx >= srcBtnX && mx <= srcBtnX + srcBtnW && my >= srcBtnY && my <= srcBtnY + srcBtnH) {
+                    ServerLuaMonitor.toggleSource();
+                    wasMouseDown = mouseDown;
+                    return;
+                }
             }
 
             // HUD na Tela Toggle button & Ping Engine button (in Network tab)
@@ -504,7 +518,8 @@ public class UnifiedPerfUI {
     }
 
     private static void renderLuaGraph(TextManager textMgr, int gx, int gy, int gw, int gh) {
-        long[] history = PerformanceMonitor.getHistory();
+        boolean isServer = ServerLuaMonitor.isServerSource();
+        long[] history = isServer ? ServerLuaMonitor.getHistory() : PerformanceMonitor.getHistory();
         long maxNs = 1_000_000L;
         long sumNs = 0;
         for (long v : history) {
@@ -516,12 +531,31 @@ public class UnifiedPerfUI {
         double currentMs = history[59] / 1_000_000.0;
         double avgMs = (sumNs / 60.0) / 1_000_000.0;
 
+        String sourceTag = isServer ? "[SERVIDOR]" : "[CLIENTE]";
         String label = String.format(java.util.Locale.US,
-            "Lua Execution Time/sec (Last 60s) | Current: %.1fms | Peak: %.1fms | Avg: %.1fms",
-            currentMs, maxMs, avgMs);
+            "%s Lua Time/s (60s) | Atual: %.1fms | Pico: %.1fms | Med: %.1fms",
+            sourceTag, currentMs, maxMs, avgMs);
         textMgr.DrawString(FONT_UI, gx + 10, gy + 5, label, 0.95, 0.85, 0.35, 1.0);
 
-        drawBars(history, maxNs, gx + 10, gy + 26, gw - 20, gh - 32, 0.95f, 0.75f, 0.2f);
+        // Source Toggle Button [Fonte: CLIENTE] / [Fonte: SERVIDOR]
+        int srcBtnW = 160;
+        int srcBtnH = 20;
+        int srcBtnX = gx + gw - srcBtnW - 6;
+        int srcBtnY = gy + 3;
+        int mx = Mouse.getXA();
+        int my = Mouse.getYA();
+        boolean srcHover = (mx >= srcBtnX && mx <= srcBtnX + srcBtnW && my >= srcBtnY && my <= srcBtnY + srcBtnH);
+        float sbr = isServer ? (srcHover ? 0.18f : 0.14f) : (srcHover ? 0.22f : 0.16f);
+        float sbg = isServer ? (srcHover ? 0.50f : 0.38f) : (srcHover ? 0.36f : 0.26f);
+        float sbb = isServer ? (srcHover ? 0.30f : 0.20f) : (srcHover ? 0.55f : 0.42f);
+        SpriteRenderer.instance.renderRect(srcBtnX, srcBtnY, srcBtnW, srcBtnH, sbr, sbg, sbb, 1.0f);
+        String srcBtnText = isServer ? "Fonte: SERVIDOR" : "Fonte: CLIENTE";
+        textMgr.DrawString(FONT_UI, srcBtnX + 10, srcBtnY + 3, srcBtnText, 1.0, 1.0, 1.0, 1.0);
+
+        float barR = isServer ? 0.35f : 0.95f;
+        float barG = isServer ? 0.85f : 0.75f;
+        float barB = isServer ? 1.0f : 0.2f;
+        drawBars(history, maxNs, gx + 10, gy + 26, gw - 20, gh - 32, barR, barG, barB);
     }
 
     private static void renderModDataGraph(TextManager textMgr, int gx, int gy, int gw, int gh) {
@@ -817,17 +851,40 @@ public class UnifiedPerfUI {
     private static void renderLuaList(TextManager textMgr, int lx, int rowY) {
         int mode = ZBGamePerf.osdMode;
         if (mode == 0) mode = 1;
+        boolean isServer = ServerLuaMonitor.isServerSource();
 
+        String srvTag = isServer ? " [SERVIDOR]" : "";
         String header;
         if (mode == 2) {
-            header = "TIME (TOTAL)   CALLS   ORIGIN       FUNCTION / FILE";
+            header = "TIME (TOTAL)   CALLS   ORIGIN       FUNCTION / FILE" + srvTag;
         } else if (mode == 3) {
-            header = "TIME (TOTAL)   CALLS   ORIGIN       FUNCTION / FILE (MOST CALLS)";
+            header = "TIME (TOTAL)   CALLS   ORIGIN       FUNCTION / FILE (MOST CALLS)" + srvTag;
         } else {
-            header = "TIME (LAST 1s) CALLS   ORIGIN       FUNCTION / FILE";
+            header = "TIME (LAST 1s) CALLS   ORIGIN       FUNCTION / FILE" + srvTag;
         }
         textMgr.DrawString(FONT_DATA, lx, rowY, header, 0.7, 0.75, 0.85, 1.0);
         rowY += 22;
+
+        if (isServer) {
+            if (!zombie.network.GameClient.client || zombie.network.GameClient.connection == null) {
+                textMgr.DrawString(FONT_DATA, lx, rowY, "STATUS: Disponivel apenas conectado em Servidor Multiplayer", 0.9, 0.8, 0.4, 1.0);
+                return;
+            }
+            List<PerfRenderer.FormattedCall> srvCalls = ServerLuaMonitor.getTopCalls();
+            if (srvCalls.isEmpty()) {
+                String waitMsg = ServerLuaMonitor.hasReceivedData
+                    ? "(Nenhuma chamada Lua significativa registrada no servidor)"
+                    : "(Aguardando dados de Lua do Servidor...)";
+                textMgr.DrawString(FONT_DATA, lx, rowY, waitMsg, 0.6, 0.6, 0.6, 1.0);
+                return;
+            }
+            for (PerfRenderer.FormattedCall c : srvCalls) {
+                String line = c.getFullLine(12);
+                textMgr.DrawString(FONT_DATA, lx, rowY, line, c.r, c.g, c.b, 1.0);
+                rowY += 20;
+            }
+            return;
+        }
 
         List<PerfRenderer.FormattedCall> calls = PerfRenderer.getTopCalls(15, 1000);
         if (calls.isEmpty()) {

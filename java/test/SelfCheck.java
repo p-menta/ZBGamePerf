@@ -81,6 +81,40 @@ public class SelfCheck {
         assert !CommandPingMonitor.timedOut : "timedOut should be reset";
         assert CommandPingMonitor.totalPongs == 0 : "totalPongs should be 0 after reset";
 
+        // Test ServerLuaMonitor
+        ServerLuaMonitor.reset();
+        assert !ServerLuaMonitor.isServerSource() : "initial source should be CLIENT";
+        ServerLuaMonitor.toggleSource();
+        assert ServerLuaMonitor.isServerSource() : "source should be SERVER after toggle";
+        ServerLuaMonitor.toggleSource();
+        assert !ServerLuaMonitor.isServerSource() : "source should be CLIENT after 2nd toggle";
+
+        // Test ServerLuaMonitor payload decoding
+        String samplePayload = "1;5000000\n" +
+            "  12.5ms\t   42\t[GAME]\tISInventoryPane.lua:120\t1.0\t0.6\t0.6\n" +
+            "   3.2ms\t   10\t[MOD]\tArmor.lua:50\t1.0\t1.0\t0.6\n";
+        ServerLuaMonitor.onDataReceived(samplePayload);
+        assert ServerLuaMonitor.hasReceivedData : "hasReceivedData should be true";
+        java.util.List<PerfRenderer.FormattedCall> topCalls = ServerLuaMonitor.getTopCalls();
+        assert topCalls.size() == 2 : "should unpack 2 calls, got: " + topCalls.size();
+        assert topCalls.get(0).pathStr.equals("ISInventoryPane.lua:120") : "path should match";
+        assert topCalls.get(0).countStr.equals("   42") : "countStr should match";
+        assert topCalls.get(1).prefixStr.equals("[MOD]") : "prefixStr should match";
+
+        long[] srvHist = ServerLuaMonitor.getHistory();
+        assert srvHist != null && srvHist.length == 60 : "server history length should be 60";
+        assert srvHist[59] == 5000000L : "latest history entry should match sample";
+
+        // Test PerformanceMonitor server auto-shutdown timeout
+        PerformanceMonitor.serverLuaProfilingActive = true;
+        PerformanceMonitor.lastServerLuaRequestTimeMs = System.currentTimeMillis() - 6000L;
+        PerformanceMonitor.serverUpdate();
+        assert !PerformanceMonitor.serverLuaProfilingActive : "server profiling should auto-shutdown after 5s timeout";
+
+        ServerLuaMonitor.reset();
+        assert !ServerLuaMonitor.hasReceivedData : "hasReceivedData should be reset";
+        assert ServerLuaMonitor.getTopCalls().isEmpty() : "topCalls should be empty after reset";
+
         System.out.println("SelfCheck PASSED successfully!");
     }
 }

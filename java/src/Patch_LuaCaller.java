@@ -23,7 +23,7 @@ public class Patch_LuaCaller {
         // - Logging is enabled (for console output)
         // Note: logWhenOSDOff only affects whether logs are written when OSD is off,
         // but statistics gathering is controlled by logEnabled itself
-        return ZBGamePerf.osdEnabled || PerformanceMonitor.logEnabled;
+        return ZBGamePerf.osdEnabled || PerformanceMonitor.logEnabled || PerformanceMonitor.serverLuaProfilingActive;
     }
 
     @Patch(className = "se.krka.kahlua.integration.LuaCaller", methodName="pcall")

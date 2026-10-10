@@ -12,6 +12,10 @@ public class PerformanceMonitor {
     public static int logIntervalSeconds = 5; // Log stats every N seconds (default 5)
     public static boolean logEnabled = false;
     public static boolean trackInternalPerformance = false;
+    public static volatile boolean serverLuaProfilingActive = false;
+    public static volatile long lastServerLuaRequestTimeMs = 0;
+    // ponytail: 5s timeout shuts down server-side profiling when no clients are requesting it
+    public static final long SERVER_PROFILING_TIMEOUT_MS = 5000L;
     
     private static volatile long lastLogTime = System.nanoTime();
     private static final Object logLock = new Object();
@@ -378,5 +382,38 @@ public class PerformanceMonitor {
             .limit(limit)
             .collect(java.util.stream.Collectors.toList());
     }
+
+    public static void serverUpdate() {
+        if (serverLuaProfilingActive) {
+            if (System.currentTimeMillis() - lastServerLuaRequestTimeMs > SERVER_PROFILING_TIMEOUT_MS) {
+                serverLuaProfilingActive = false;
+            }
+        }
+    }
+
+    public static String packTopCalls(int mode, int topN) {
+        int prevMode = ZBGamePerf.osdMode;
+        ZBGamePerf.osdMode = (mode >= 1 && mode <= 3) ? mode : 1;
+        try {
+            java.util.List<PerfRenderer.FormattedCall> calls = PerfRenderer.getTopCalls(topN, 1000);
+            long[] history = getHistory();
+            long latestNs = (history != null && history.length > 59) ? history[59] : 0L;
+            StringBuilder sb = new StringBuilder(512);
+            sb.append(mode).append(';').append(latestNs).append('\n');
+            for (PerfRenderer.FormattedCall c : calls) {
+                sb.append(c.timeStr).append('\t')
+                  .append(c.countStr).append('\t')
+                  .append(c.prefixStr).append('\t')
+                  .append(c.pathStr).append('\t')
+                  .append(c.r).append('\t')
+                  .append(c.g).append('\t')
+                  .append(c.b).append('\n');
+            }
+            return sb.toString();
+        } finally {
+            ZBGamePerf.osdMode = prevMode;
+        }
+    }
 }
+
 
