@@ -97,7 +97,6 @@ public class Patch_Commands {
         public static void exit(@Patch.Argument(0) String module, @Patch.Argument(1) String command,
                                 @Patch.Argument(3) zombie.core.raknet.UdpConnection connection) {
             if (!CommandMonitor.serverProfilingActive) return;
-            if ("ZBGamePerf".equals(module)) return;
             try {
                 int bytes = 0;
                 if (connection != null) {
@@ -128,6 +127,10 @@ public class Patch_Commands {
                 r.getByte(); // skip playerIndex
                 String module = r.getUTF();
                 String command = r.getUTF();
+                if (CommandMonitor.serverProfilingActive) {
+                    int bytes = Math.max(0, bb.bb.position() - pos);
+                    CommandMonitor.recordRx(module, command, bytes);
+                }
                 if ("ZBGamePerf".equals(module)) {
                     long now = System.currentTimeMillis();
                     if ("Ping".equals(command)) {
@@ -166,9 +169,6 @@ public class Patch_Commands {
                         String payload = ServerNetMonitor.packPools(req[0], req[1]);
                         sendServerResponse("ResPools", payload, connection);
                     }
-                } else if (CommandMonitor.serverProfilingActive) {
-                    int bytes = Math.max(0, bb.bb.position() - pos);
-                    CommandMonitor.recordRx(module, command, bytes);
                 }
             } catch (Throwable ignored) {
             }
