@@ -54,6 +54,33 @@ public class SelfCheck {
         assert ZBGamePerf.isChunkHudActive() == toggled : "isChunkHudActive should match toggled state";
         ZBGamePerf.toggleChunkHud(); // restore
 
+        // Test CommandPingMonitor
+        CommandPingMonitor.reset();
+        assert !CommandPingMonitor.isWaiting : "isWaiting should be false after reset";
+        assert CommandPingMonitor.lastRoundTripMs == -1 : "lastRoundTripMs should be -1 after reset";
+        assert CommandPingMonitor.totalPongs == 0 : "totalPongs should be 0 after reset";
+
+        CommandPingMonitor.isWaiting = true;
+        CommandPingMonitor.lastSentMs = System.currentTimeMillis() - 50;
+        CommandPingMonitor.onPongReceived();
+        assert !CommandPingMonitor.isWaiting : "isWaiting should be false after pong";
+        assert CommandPingMonitor.totalPongs == 1 : "totalPongs should be 1";
+        assert CommandPingMonitor.lastRoundTripMs >= 40 : "lastRoundTripMs should be >= 40ms";
+        assert CommandPingMonitor.minRoundTripMs == CommandPingMonitor.lastRoundTripMs : "minRoundTripMs should match";
+        assert CommandPingMonitor.maxRoundTripMs == CommandPingMonitor.lastRoundTripMs : "maxRoundTripMs should match";
+        assert CommandPingMonitor.avgRoundTripMs == (double) CommandPingMonitor.lastRoundTripMs : "avgRoundTripMs should match";
+
+        // Test timeout
+        CommandPingMonitor.isWaiting = true;
+        CommandPingMonitor.lastSentMs = System.currentTimeMillis() - 6000;
+        CommandPingMonitor.update();
+        assert !CommandPingMonitor.isWaiting : "should time out after 5s";
+        assert CommandPingMonitor.timedOut : "timedOut flag should be true";
+
+        CommandPingMonitor.reset();
+        assert !CommandPingMonitor.timedOut : "timedOut should be reset";
+        assert CommandPingMonitor.totalPongs == 0 : "totalPongs should be 0 after reset";
+
         System.out.println("SelfCheck PASSED successfully!");
     }
 }

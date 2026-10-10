@@ -41,6 +41,7 @@ public class UnifiedPerfUI {
     private static boolean wasCtrl0 = false;
     private static boolean wasCtrlP = false;
     private static boolean wasCtrlH = false;
+    private static boolean wasCtrlE = false;
 
     public static boolean profileAllTabs = false; // When false, only active tab is measured
 
@@ -71,6 +72,7 @@ public class UnifiedPerfUI {
             boolean is0 = GameKeyboard.isKeyDown(Keyboard.KEY_0);
             boolean isP = GameKeyboard.isKeyDown(Keyboard.KEY_P);
             boolean isH = GameKeyboard.isKeyDown(Keyboard.KEY_H);
+            boolean isE = GameKeyboard.isKeyDown(Keyboard.KEY_E);
 
             if (isCtrl && is1 && !wasCtrl1) toggleTab(0);
             wasCtrl1 = isCtrl && is1;
@@ -103,6 +105,11 @@ public class UnifiedPerfUI {
                 ChunkDeliveryMonitor.showOnScreenHud = !ChunkDeliveryMonitor.showOnScreenHud;
             }
             wasCtrlH = isCtrl && isH;
+
+            if (isCtrl && isE && !wasCtrlE) {
+                CommandPingMonitor.sendPing();
+            }
+            wasCtrlE = isCtrl && isE;
         } catch (Throwable ignored) {
         }
     }
@@ -275,6 +282,7 @@ public class UnifiedPerfUI {
         if (activeTab == 4 || profileAllTabs || ChunkDeliveryMonitor.showOnScreenHud) {
             ChunkDeliveryMonitor.update();
         }
+        CommandPingMonitor.update();
 
         if (ChunkDeliveryMonitor.showOnScreenHud) {
             ChunkDeliveryMonitor.handleHudMouse(mx, my, mouseDown, clicked);
@@ -356,7 +364,7 @@ public class UnifiedPerfUI {
                 tabX += TAB_W + 4;
             }
 
-            // HUD na Tela Toggle button (in Network tab)
+            // HUD na Tela Toggle button & Ping Engine button (in Network tab)
             if (activeTab == 4) {
                 int hudBtnW = 180;
                 int hudBtnH = 20;
@@ -364,6 +372,16 @@ public class UnifiedPerfUI {
                 int hudBtnY = winY + 64 + 3;
                 if (mx >= hudBtnX && mx <= hudBtnX + hudBtnW && my >= hudBtnY && my <= hudBtnY + hudBtnH) {
                     ChunkDeliveryMonitor.showOnScreenHud = !ChunkDeliveryMonitor.showOnScreenHud;
+                    wasMouseDown = mouseDown;
+                    return;
+                }
+
+                int pingBtnW = 190;
+                int pingBtnH = 20;
+                int pingBtnX = hudBtnX - pingBtnW - 8;
+                int pingBtnY = winY + 64 + 3;
+                if (mx >= pingBtnX && mx <= pingBtnX + pingBtnW && my >= pingBtnY && my <= pingBtnY + pingBtnH) {
+                    CommandPingMonitor.sendPing();
                     wasMouseDown = mouseDown;
                     return;
                 }
@@ -615,6 +633,22 @@ public class UnifiedPerfUI {
         SpriteRenderer.instance.renderRect(hudBtnX, hudBtnY, hudBtnW, hudBtnH, hbr, hbg, hbb, 1.0f);
         String hudBtnText = hudActive ? "HUD na Tela: LIGADO (Ctrl+H)" : "HUD na Tela: DESLIGADO";
         textMgr.DrawString(FONT_UI, hudBtnX + 8, hudBtnY + 3, hudBtnText, 1.0, 1.0, 1.0, 1.0);
+
+        // Ping Engine (Carga) button
+        int pingBtnW = 190;
+        int pingBtnH = 20;
+        int pingBtnX = hudBtnX - pingBtnW - 8;
+        int pingBtnY = gy + 3;
+        int mx = Mouse.getXA();
+        int my = Mouse.getYA();
+        boolean pingHover = (mx >= pingBtnX && mx <= pingBtnX + pingBtnW && my >= pingBtnY && my <= pingBtnY + pingBtnH);
+        boolean pingWaiting = CommandPingMonitor.isWaiting;
+        float pbr = pingWaiting ? 0.45f : (pingHover ? 0.22f : 0.16f);
+        float pbg = pingWaiting ? 0.35f : (pingHover ? 0.38f : 0.28f);
+        float pbb = pingWaiting ? 0.15f : (pingHover ? 0.55f : 0.42f);
+        SpriteRenderer.instance.renderRect(pingBtnX, pingBtnY, pingBtnW, pingBtnH, pbr, pbg, pbb, 1.0f);
+        String pingBtnText = pingWaiting ? "Pingando Engine..." : "Ping Engine (Ctrl+E)";
+        textMgr.DrawString(FONT_UI, pingBtnX + 8, pingBtnY + 3, pingBtnText, 1.0, 1.0, 1.0, 1.0);
 
         float barWidth = (float) (gw - 20) / 60.0f;
         int bh = gh - 32;
@@ -973,6 +1007,12 @@ public class UnifiedPerfUI {
                 "(Network & RakNet metrics become active when connected to a LAN or Dedicated Server)", 0.6, 0.6, 0.6, 1.0);
 
             rowY += 50;
+            renderTableHeader(textMgr, lx, rowY, lw, "Engine Round-Trip Ping/Pong (Carga)");
+            rowY += 20;
+            renderTableRow(textMgr, lx, rowY, lw, "Engine Ping/Pong (Carga) :", "Indisponivel em Single Player", "-", true);
+            rowY += 18;
+
+            rowY += 4;
             renderTableHeader(textMgr, lx, rowY, lw, "Chunk Delivery & Streaming (Perimeter 100%)");
             rowY += 20;
             int row = 0;
@@ -1038,6 +1078,22 @@ public class UnifiedPerfUI {
             String cong = r.isCongested ? "ACTIVE (Throttled)" : "None (Unrestricted)";
             String congSrv = (r.bpsLimit > 0) ? (ModDataMonitor.formatBytes(r.bpsLimit) + "/s") : "-";
             renderTableRow(textMgr, lx, rowY, lw, "Congestion Control :", cong, congSrv, (row++ % 2 == 0));
+            rowY += 18;
+
+            String pingEngineVal;
+            if (CommandPingMonitor.isWaiting) {
+                pingEngineVal = "Aguardando Pong...";
+            } else if (CommandPingMonitor.totalPongs > 0) {
+                pingEngineVal = String.format(java.util.Locale.US, "%d ms (Med: %.0f, Min: %d, Max: %d)",
+                    CommandPingMonitor.lastRoundTripMs, CommandPingMonitor.avgRoundTripMs,
+                    CommandPingMonitor.minRoundTripMs, CommandPingMonitor.maxRoundTripMs);
+            } else if (CommandPingMonitor.timedOut) {
+                pingEngineVal = "Timeout (> 5s)";
+            } else {
+                pingEngineVal = "Nao testado (Clique no botao)";
+            }
+            String pingEngineSrv = CommandPingMonitor.isWaiting ? "Processando..." : (CommandPingMonitor.totalPongs > 0 ? "Ativo (Round-Trip)" : "-");
+            renderTableRow(textMgr, lx, rowY, lw, "Engine Ping/Pong (Carga) :", pingEngineVal, pingEngineSrv, (row++ % 2 == 0));
             rowY += 18;
 
             rowY += 4;
@@ -1122,6 +1178,22 @@ public class UnifiedPerfUI {
                 "Requisicoes em transito (sentRequests): %d | Fila de descompressao: %d",
                 ChunkDeliveryMonitor.inFlightRequests, ChunkDeliveryMonitor.loadQueueSize);
             textMgr.DrawString(FONT_DATA, lx + 20, rowY, chunkQueueInfo, 0.8, 0.85, 0.9, 1.0);
+            rowY += 19;
+
+            String pingEngineRaw;
+            if (CommandPingMonitor.isWaiting) {
+                pingEngineRaw = "Aguardando Pong...";
+            } else if (CommandPingMonitor.totalPongs > 0) {
+                pingEngineRaw = String.format(java.util.Locale.US, "%d ms (Med: %.0f ms, Min: %d ms, Max: %d ms)",
+                    CommandPingMonitor.lastRoundTripMs, CommandPingMonitor.avgRoundTripMs,
+                    CommandPingMonitor.minRoundTripMs, CommandPingMonitor.maxRoundTripMs);
+            } else if (CommandPingMonitor.timedOut) {
+                pingEngineRaw = "Timeout (> 5s)";
+            } else {
+                pingEngineRaw = "Nao testado (Clique no botao)";
+            }
+            textMgr.DrawString(FONT_DATA, lx + 20, rowY,
+                "Engine Ping/Pong (Carga): " + pingEngineRaw, 0.35, 0.9, 1.0, 1.0);
             rowY += 19;
         }
     }
