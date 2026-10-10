@@ -153,6 +153,10 @@ public class ZBGamePerf {
         ChunkDeliveryMonitor.reset();
         CommandPingMonitor.reset();
         ServerLuaMonitor.reset();
+        ServerModDataMonitor.reset();
+        ServerCommandMonitor.reset();
+        ServerLgsMonitor.reset();
+        ServerPoolsMonitor.reset();
     }
 
     public static void setLogWhenOSDOff(boolean enabled) {

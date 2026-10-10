@@ -18,7 +18,7 @@ public class Patch_GlobalModData {
 
         @Patch.OnExit
         public static void exit(@Patch.This Object self, @Patch.Argument(0) ByteBufferWriter b, @Patch.Local("startPos") int startPos) {
-            if (!ZBGamePerf.modDataOsdEnabled || b == null || b.bb == null) {
+            if ((!ZBGamePerf.modDataOsdEnabled && !ModDataMonitor.serverProfilingActive) || b == null || b.bb == null) {
                 return;
             }
             try {
@@ -39,7 +39,7 @@ public class Patch_GlobalModData {
 
         @Patch.OnExit
         public static void exit(@Patch.Argument(0) ByteBufferReader b, @Patch.Argument(1) IConnection connection, @Patch.Local("startPos") int startPos) {
-            if (!ZBGamePerf.modDataOsdEnabled || b == null || b.bb == null) {
+            if ((!ZBGamePerf.modDataOsdEnabled && !ModDataMonitor.serverProfilingActive) || b == null || b.bb == null) {
                 return;
             }
             try {

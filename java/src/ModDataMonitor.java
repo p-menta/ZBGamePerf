@@ -106,6 +106,7 @@ public class ModDataMonitor {
     private static final long[] secondTxBytes = new long[60];
     private static final long[] secondRxBytes = new long[60];
     private static long lastModDataSecond = 0;
+    public static volatile boolean serverProfilingActive = false;
 
     public static synchronized void recordTx(String tag, int bytes) {
         final String effectiveTag = (tag == null || tag.isEmpty()) ? "Unknown" : tag;
@@ -215,5 +216,27 @@ public class ModDataMonitor {
         } else {
             return String.format(java.util.Locale.US, "%.2f MB", bytes / (1024.0 * 1024.0));
         }
+    }
+
+    public static synchronized String packEntries(int mode, int topN) {
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        long txB = secondTxBytes[(int)(sec % 60)];
+        long rxB = secondRxBytes[(int)(sec % 60)];
+        StringBuilder sb = new StringBuilder();
+        sb.append(txB).append(';').append(rxB).append('\n');
+        List<ModDataEntry> list = getEntries(mode);
+        int count = 0;
+        for (ModDataEntry e : list) {
+            if (++count > topN) break;
+            sb.append(e.tag).append('\t')
+              .append(e.isTx ? '1' : '0').append('\t')
+              .append(e.getCountLastMinute()).append('\t')
+              .append(String.format(java.util.Locale.US, "%.1f", e.getRatePerSecond())).append('\t')
+              .append(e.lastBytes).append('\t')
+              .append(e.totalBytes).append('\t')
+              .append(e.totalCount).append('\n');
+        }
+        return sb.toString();
     }
 }

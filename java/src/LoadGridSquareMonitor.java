@@ -103,13 +103,14 @@ public class LoadGridSquareMonitor {
     private static final long[] secondDurationNs = new long[60];
     private static final int[] secondSquares = new int[60];
     private static long lastLgsSecond = 0;
+    public static volatile boolean serverProfilingActive = false;
 
     public static boolean isInsideEvent() {
         return insideLGS.get();
     }
 
     public static synchronized void onEnterEvent() {
-        if (!ZBGamePerf.loadGridSquareOsdEnabled) return;
+        if (!ZBGamePerf.loadGridSquareOsdEnabled && !serverProfilingActive) return;
         insideLGS.set(Boolean.TRUE);
         totalSquaresLoaded++;
 
@@ -160,7 +161,7 @@ public class LoadGridSquareMonitor {
     }
 
     public static void recordCallback(Object fun, long durationNs) {
-        if (!ZBGamePerf.loadGridSquareOsdEnabled || fun == null) return;
+        if ((!ZBGamePerf.loadGridSquareOsdEnabled && !serverProfilingActive) || fun == null) return;
         FileInfo info = LuaFileInfoExtractor.getLuaFileInfoObj(fun);
         String key = info.prefix + ":" + info.relativePath + ":" + info.line;
         entries.computeIfAbsent(key, k -> new CallbackEntry(info, fun)).record(durationNs);
@@ -213,5 +214,32 @@ public class LoadGridSquareMonitor {
             });
         }
         return list;
+    }
+
+    public static synchronized String packEntries(int mode, int topN) {
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        long durNs = secondDurationNs[(int)(sec % 60)];
+        int sqs = secondSquares[(int)(sec % 60)];
+        StringBuilder sb = new StringBuilder();
+        sb.append(durNs).append(';').append(sqs).append('\n');
+        List<CallbackEntry> list = getEntries(mode);
+        int count = 0;
+        for (CallbackEntry e : list) {
+            if (++count > topN) break;
+            String prefixStr = e.info.prefix != null ? e.info.prefix.toString() : "[UNK]";
+            String loc = e.info.relativePath + ":" + e.info.line;
+            double totalMs = e.totalDurationNs / 1_000_000.0;
+            double avgUs = e.totalCount > 0 ? (e.totalDurationNs / 1_000.0) / e.totalCount : 0.0;
+            double maxMs = e.maxDurationNs / 1_000_000.0;
+            sb.append(prefixStr).append('\t')
+              .append(loc).append('\t')
+              .append(e.totalCount).append('\t')
+              .append(String.format(java.util.Locale.US, "%.1f", e.getRatePerSecond())).append('\t')
+              .append(String.format(java.util.Locale.US, "%.1f", totalMs)).append('\t')
+              .append(String.format(java.util.Locale.US, "%.1f", avgUs)).append('\t')
+              .append(String.format(java.util.Locale.US, "%.1f", maxMs)).append('\n');
+        }
+        return sb.toString();
     }
 }

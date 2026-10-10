@@ -40,6 +40,7 @@ public class ServerNetMonitor {
     public static volatile boolean netEnabled = false;
     public static volatile boolean serverWorldEnabled = false;
     public static volatile boolean poolsEnabled = false;
+    private static long lastServerWorldReqMs = 0;
 
     public static class RakNetSnapshot {
         public boolean isConnected;
@@ -210,6 +211,15 @@ public class ServerNetMonitor {
             // Periodically refresh remote server statistics if on MP
             if (GameClient.client && (sec % 2 == 0)) {
                 requestServerStatistics();
+            }
+            if (GameClient.client && GameClient.connection != null && UnifiedPerfUI.activeTab == 5 && UnifiedPerfUI.isOpen) {
+                long now = System.currentTimeMillis();
+                if (now - lastServerWorldReqMs >= 1000L) {
+                    lastServerWorldReqMs = now;
+                    try {
+                        GameClient.instance.sendClientCommand(zombie.characters.IsoPlayer.getInstance(), "ZBGamePerf", "ReqServerWorld", (KahluaTable) null);
+                    } catch (Throwable ignored) {}
+                }
             }
         }
 
@@ -491,5 +501,113 @@ public class ServerNetMonitor {
         cachedRakNet = new RakNetSnapshot();
         cachedServerWorld = new ServerWorldSnapshot();
         cachedPools = new PoolsSnapshot();
+        lastServerWorldReqMs = 0;
+    }
+
+    public static synchronized String packServerWorld() {
+        PerformanceStatistic perf = PerformanceStatistic.getInstance();
+        GameStatistic game = GameStatistic.getInstance();
+
+        double fps = (perf != null && perf.fps != null) ? perf.fps.get() : Math.round(GameWindow.averageFPS);
+        Runtime rt = Runtime.getRuntime();
+        double memTotal = rt.totalMemory() / (1024.0 * 1024.0);
+        double memFree = rt.freeMemory() / (1024.0 * 1024.0);
+        double memUsed = memTotal - memFree;
+        double memMax = rt.maxMemory() / (1024.0 * 1024.0);
+        if (perf != null) {
+            try {
+                if (perf.memoryUsed != null) memUsed = perf.memoryUsed.get();
+                if (perf.memoryFree != null) memFree = perf.memoryFree.get();
+                if (perf.memoryTotal != null) memTotal = perf.memoryTotal.get();
+                if (perf.memoryMax != null) memMax = perf.memoryMax.get();
+            } catch (Throwable ignored) {}
+        }
+
+        double tickMin = (perf != null && perf.minUpdatePeriod != null) ? perf.minUpdatePeriod.get() : -1.0;
+        double tickMax = (perf != null && perf.maxUpdatePeriod != null) ? perf.maxUpdatePeriod.get() : -1.0;
+        double tickAvg = (perf != null && perf.avgUpdatePeriod != null) ? perf.avgUpdatePeriod.get() : -1.0;
+
+        double players = (game != null && game.players != null) ? game.players.get() : 0.0;
+        double animals = (game != null && game.animalObjects != null) ? game.animalObjects.get() : 0.0;
+        double zombies = (game != null && game.zombiesLoaded != null) ? game.zombiesLoaded.get() : 0.0;
+        double loadedCells = (game != null && game.loadedCells != null) ? game.loadedCells.get() : 0.0;
+        double teleports = (game != null && game.zombiesTeleports != null) ? game.zombiesTeleports.get() : 0.0;
+
+        return String.format(java.util.Locale.US,
+            "%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.1f;%.0f;%.0f;%.0f;%.0f;%.0f",
+            fps, memUsed, memFree, memTotal, memMax,
+            tickMin, tickMax, tickAvg,
+            players, animals, zombies, loadedCells, teleports);
+    }
+
+    public static synchronized void onServerWorldReceived(String data) {
+        if (data == null || data.isEmpty()) return;
+        try {
+            String[] p = data.trim().split(";");
+            if (p.length >= 13) {
+                double sFps = Double.parseDouble(p[0]);
+                double sMemUsed = Double.parseDouble(p[1]);
+                double sMemFree = Double.parseDouble(p[2]);
+                double sMemTotal = Double.parseDouble(p[3]);
+                double sMemMax = Double.parseDouble(p[4]);
+                double sTickMin = Double.parseDouble(p[5]);
+                double sTickMax = Double.parseDouble(p[6]);
+                double sTickAvg = Double.parseDouble(p[7]);
+                double sPlayers = Double.parseDouble(p[8]);
+                double sAnimals = Double.parseDouble(p[9]);
+                double sZombies = Double.parseDouble(p[10]);
+                double sCells = Double.parseDouble(p[11]);
+                double sTeleports = Double.parseDouble(p[12]);
+
+                cachedServerWorld.serverFps = sFps;
+                cachedServerWorld.serverMemUsedMb = sMemUsed;
+                cachedServerWorld.serverMemFreeMb = sMemFree;
+                cachedServerWorld.serverMemTotalMb = sMemTotal;
+                cachedServerWorld.serverMemMaxMb = sMemMax;
+                cachedServerWorld.serverTickMinMs = sTickMin;
+                cachedServerWorld.serverTickMaxMs = sTickMax;
+                cachedServerWorld.serverTickAvgMs = sTickAvg;
+                cachedServerWorld.serverPlayers = sPlayers;
+                cachedServerWorld.serverAnimalObjects = sAnimals;
+                cachedServerWorld.serverAnimalInstances = sAnimals;
+                cachedServerWorld.serverZombiesTotal = sZombies;
+                cachedServerWorld.serverZombiesLoaded = sZombies;
+                cachedServerWorld.serverZombiesSimulated = sZombies;
+                cachedServerWorld.serverLoadedCells = sCells;
+                cachedServerWorld.zombieTeleports = sTeleports;
+
+                long sec = System.currentTimeMillis() / 1000L;
+                int idx = (int)(sec % 60);
+                if (sFps >= 0) historyServerFps[idx] = (int) Math.round(sFps);
+                if (sMemUsed >= 0) historyServerMem[idx] = (long) sMemUsed;
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    public static synchronized String packPools(int mode, int topN) {
+        PoolsSnapshot snap = buildPoolsSnapshot();
+        StringBuilder sb = new StringBuilder();
+        sb.append(snap.usedObjects).append(';')
+          .append(snap.freeObjects).append(';')
+          .append(snap.totalObjects).append('\n');
+        List<PoolItem> list = new ArrayList<>(snap.items);
+        if (mode == 2) {
+            list.sort((a, b) -> Long.compare(b.reused, a.reused));
+        } else if (mode == 3) {
+            list.sort((a, b) -> Long.compare(b.alloc, a.alloc));
+        } else {
+            list.sort((a, b) -> Integer.compare(b.used, a.used));
+        }
+        int count = 0;
+        for (PoolItem item : list) {
+            if (++count > topN) break;
+            sb.append(item.name).append('\t')
+              .append(item.used).append('\t')
+              .append(item.free).append('\t')
+              .append(item.total).append('\t')
+              .append(item.alloc).append('\t')
+              .append(item.reused).append('\n');
+        }
+        return sb.toString();
     }
 }

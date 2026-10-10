@@ -284,6 +284,10 @@ public class UnifiedPerfUI {
         }
         CommandPingMonitor.update();
         ServerLuaMonitor.update();
+        ServerModDataMonitor.update();
+        ServerCommandMonitor.update();
+        ServerLgsMonitor.update();
+        ServerPoolsMonitor.update();
 
         if (ChunkDeliveryMonitor.showOnScreenHud) {
             ChunkDeliveryMonitor.handleHudMouse(mx, my, mouseDown, clicked);
@@ -365,14 +369,18 @@ public class UnifiedPerfUI {
                 tabX += TAB_W + 4;
             }
 
-            // Source Toggle button (in Lua tab)
-            if (activeTab == 0) {
+            // Source Toggle button (in tabs 0, 1, 2, 3, 6)
+            if (activeTab == 0 || activeTab == 1 || activeTab == 2 || activeTab == 3 || activeTab == 6) {
                 int srcBtnW = 160;
                 int srcBtnH = 20;
                 int srcBtnX = winX + WIN_W - 12 - srcBtnW - 6;
                 int srcBtnY = winY + 64 + 3;
                 if (mx >= srcBtnX && mx <= srcBtnX + srcBtnW && my >= srcBtnY && my <= srcBtnY + srcBtnH) {
-                    ServerLuaMonitor.toggleSource();
+                    if (activeTab == 0) ServerLuaMonitor.toggleSource();
+                    else if (activeTab == 1) ServerModDataMonitor.toggleSource();
+                    else if (activeTab == 2) ServerCommandMonitor.toggleSource();
+                    else if (activeTab == 3) ServerLgsMonitor.toggleSource();
+                    else if (activeTab == 6) ServerPoolsMonitor.toggleSource();
                     wasMouseDown = mouseDown;
                     return;
                 }
@@ -537,7 +545,15 @@ public class UnifiedPerfUI {
             sourceTag, currentMs, maxMs, avgMs);
         textMgr.DrawString(FONT_UI, gx + 10, gy + 5, label, 0.95, 0.85, 0.35, 1.0);
 
-        // Source Toggle Button [Source: CLIENT] / [Source: SERVER]
+        renderSourceButton(textMgr, gx, gy, gw, isServer);
+
+        float barR = isServer ? 0.35f : 0.95f;
+        float barG = isServer ? 0.85f : 0.75f;
+        float barB = isServer ? 1.0f : 0.2f;
+        drawBars(history, maxNs, gx + 10, gy + 26, gw - 20, gh - 32, barR, barG, barB);
+    }
+
+    private static void renderSourceButton(TextManager textMgr, int gx, int gy, int gw, boolean isServer) {
         int srcBtnW = 160;
         int srcBtnH = 20;
         int srcBtnX = gx + gw - srcBtnW - 6;
@@ -551,16 +567,12 @@ public class UnifiedPerfUI {
         SpriteRenderer.instance.renderRect(srcBtnX, srcBtnY, srcBtnW, srcBtnH, sbr, sbg, sbb, 1.0f);
         String srcBtnText = isServer ? "Source: SERVER" : "Source: CLIENT";
         textMgr.DrawString(FONT_UI, srcBtnX + 10, srcBtnY + 3, srcBtnText, 1.0, 1.0, 1.0, 1.0);
-
-        float barR = isServer ? 0.35f : 0.95f;
-        float barG = isServer ? 0.85f : 0.75f;
-        float barB = isServer ? 1.0f : 0.2f;
-        drawBars(history, maxNs, gx + 10, gy + 26, gw - 20, gh - 32, barR, barG, barB);
     }
 
     private static void renderModDataGraph(TextManager textMgr, int gx, int gy, int gw, int gh) {
-        long[] tx = ModDataMonitor.getHistoryTx();
-        long[] rx = ModDataMonitor.getHistoryRx();
+        boolean isServer = ServerModDataMonitor.isServerSource();
+        long[] tx = isServer ? ServerModDataMonitor.getHistoryTx() : ModDataMonitor.getHistoryTx();
+        long[] rx = isServer ? ServerModDataMonitor.getHistoryRx() : ModDataMonitor.getHistoryRx();
         long maxB = 1024L;
         for (int i = 0; i < 60; i++) {
             long total = tx[i] + rx[i];
@@ -568,18 +580,21 @@ public class UnifiedPerfUI {
         }
 
         long curTotal = tx[59] + rx[59];
+        String sourceTag = isServer ? "[SERVER] " : "";
         String label = String.format(java.util.Locale.US,
-            "GlobalModData Bandwidth/sec (Last 60s) | Current: %s/s (TX: %s, RX: %s) | Peak: %s/s",
-            ModDataMonitor.formatBytes(curTotal), ModDataMonitor.formatBytes(tx[59]), ModDataMonitor.formatBytes(rx[59]),
+            "%sGlobalModData Bandwidth/sec (Last 60s) | Current: %s/s (TX: %s, RX: %s) | Peak: %s/s",
+            sourceTag, ModDataMonitor.formatBytes(curTotal), ModDataMonitor.formatBytes(tx[59]), ModDataMonitor.formatBytes(rx[59]),
             ModDataMonitor.formatBytes(maxB));
         textMgr.DrawString(FONT_UI, gx + 10, gy + 5, label, 0.35, 0.85, 1.0, 1.0);
 
+        renderSourceButton(textMgr, gx, gy, gw, isServer);
         drawStackedBars(tx, rx, maxB, gx + 10, gy + 26, gw - 20, gh - 32);
     }
 
     private static void renderCommandGraph(TextManager textMgr, int gx, int gy, int gw, int gh) {
-        long[] tx = CommandMonitor.getHistoryTx();
-        long[] rx = CommandMonitor.getHistoryRx();
+        boolean isServer = ServerCommandMonitor.isServerSource();
+        long[] tx = isServer ? ServerCommandMonitor.getHistoryTx() : CommandMonitor.getHistoryTx();
+        long[] rx = isServer ? ServerCommandMonitor.getHistoryRx() : CommandMonitor.getHistoryRx();
         long maxB = 1024L;
         for (int i = 0; i < 60; i++) {
             long total = tx[i] + rx[i];
@@ -587,18 +602,21 @@ public class UnifiedPerfUI {
         }
 
         long curTotal = tx[59] + rx[59];
+        String sourceTag = isServer ? "[SERVER] " : "";
         String label = String.format(java.util.Locale.US,
-            "Client/Server Commands Bandwidth/sec (Last 60s) | Current: %s/s (TX: %s, RX: %s) | Peak: %s/s",
-            ModDataMonitor.formatBytes(curTotal), ModDataMonitor.formatBytes(tx[59]), ModDataMonitor.formatBytes(rx[59]),
+            "%sClient/Server Commands Bandwidth/sec (Last 60s) | Current: %s/s (TX: %s, RX: %s) | Peak: %s/s",
+            sourceTag, ModDataMonitor.formatBytes(curTotal), ModDataMonitor.formatBytes(tx[59]), ModDataMonitor.formatBytes(rx[59]),
             ModDataMonitor.formatBytes(maxB));
         textMgr.DrawString(FONT_UI, gx + 10, gy + 5, label, 0.35, 0.85, 1.0, 1.0);
 
+        renderSourceButton(textMgr, gx, gy, gw, isServer);
         drawStackedBars(tx, rx, maxB, gx + 10, gy + 26, gw - 20, gh - 32);
     }
 
     private static void renderLgsGraph(TextManager textMgr, int gx, int gy, int gw, int gh) {
-        long[] duration = LoadGridSquareMonitor.getHistoryDuration();
-        int[] squares = LoadGridSquareMonitor.getHistorySquares();
+        boolean isServer = ServerLgsMonitor.isServerSource();
+        long[] duration = isServer ? ServerLgsMonitor.getHistoryDuration() : LoadGridSquareMonitor.getHistoryDuration();
+        int[] squares = isServer ? ServerLgsMonitor.getHistorySquares() : LoadGridSquareMonitor.getHistorySquares();
 
         long maxNs = 1_000_000L;
         for (long v : duration) if (v > maxNs) maxNs = v;
@@ -607,11 +625,13 @@ public class UnifiedPerfUI {
         double peakMs = maxNs / 1_000_000.0;
         int curSq = squares[59];
 
+        String sourceTag = isServer ? "[SERVER] " : "";
         String label = String.format(java.util.Locale.US,
-            "LoadGridSquare Execution Time/sec (Last 60s) | Current: %.1fms (%d squares) | Peak: %.1fms",
-            curMs, curSq, peakMs);
+            "%sLoadGridSquare Execution Time/sec (Last 60s) | Current: %.1fms (%d squares) | Peak: %.1fms",
+            sourceTag, curMs, curSq, peakMs);
         textMgr.DrawString(FONT_UI, gx + 10, gy + 5, label, 0.45, 0.95, 0.55, 1.0);
 
+        renderSourceButton(textMgr, gx, gy, gw, isServer);
         drawBars(duration, maxNs, gx + 10, gy + 26, gw - 20, gh - 32, 0.4f, 0.95f, 0.55f);
     }
 
@@ -744,16 +764,19 @@ public class UnifiedPerfUI {
     }
 
     private static void renderPoolsGraph(TextManager textMgr, int gx, int gy, int gw, int gh) {
-        long[] history = ServerNetMonitor.getHistoryPoolsUsed();
+        boolean isServer = ServerPoolsMonitor.isServerSource();
+        long[] history = isServer ? ServerPoolsMonitor.getHistoryPoolsUsed() : ServerNetMonitor.getHistoryPoolsUsed();
         long maxObj = 1000L;
         for (long v : history) if (v > maxObj) maxObj = v;
 
-        ServerNetMonitor.PoolsSnapshot snap = ServerNetMonitor.getPoolsSnapshot();
+        ServerNetMonitor.PoolsSnapshot snap = isServer ? ServerPoolsMonitor.getPoolsSnapshot() : ServerNetMonitor.getPoolsSnapshot();
+        String sourceTag = isServer ? "[SERVER] " : "";
         String label = String.format(java.util.Locale.US,
-            "JVM Object Pools In-Use (Last 60s) | In-Use: %d | Free: %d | Total: %d",
-            snap.usedObjects, snap.freeObjects, snap.totalObjects);
+            "%sJVM Object Pools In-Use (Last 60s) | In-Use: %d | Free: %d | Total: %d",
+            sourceTag, snap.usedObjects, snap.freeObjects, snap.totalObjects);
         textMgr.DrawString(FONT_UI, gx + 10, gy + 5, label, 0.75, 0.65, 1.0, 1.0);
 
+        renderSourceButton(textMgr, gx, gy, gw, isServer);
         drawBars(history, maxObj, gx + 10, gy + 26, gw - 20, gh - 32, 0.65f, 0.55f, 0.95f);
     }
 
@@ -903,12 +926,45 @@ public class UnifiedPerfUI {
     private static void renderModDataList(TextManager textMgr, int lx, int rowY) {
         int mode = ZBGamePerf.modDataOsdMode;
         if (mode == 0) mode = 1;
+        boolean isServer = ServerModDataMonitor.isServerSource();
+        String srvTag = isServer ? " [SERVER]" : "";
 
-        String header = (mode == 2) ? "DIR   TAG (TX ONLY)           RATE/MIN (RATE/S)   LAST SIZE    TOTAL BYTES  (PKTS)"
-                      : (mode == 3) ? "DIR   TAG (RX ONLY)           RATE/MIN (RATE/S)   LAST SIZE    TOTAL BYTES  (PKTS)"
-                      :               "DIR   TAG                     RATE/MIN (RATE/S)   LAST SIZE    TOTAL BYTES  (PKTS)";
+        String header = (mode == 2) ? "DIR   TAG (TX ONLY)           RATE/MIN (RATE/S)   LAST SIZE    TOTAL BYTES  (PKTS)" + srvTag
+                      : (mode == 3) ? "DIR   TAG (RX ONLY)           RATE/MIN (RATE/S)   LAST SIZE    TOTAL BYTES  (PKTS)" + srvTag
+                      :               "DIR   TAG                     RATE/MIN (RATE/S)   LAST SIZE    TOTAL BYTES  (PKTS)" + srvTag;
         textMgr.DrawString(FONT_DATA, lx, rowY, header, 0.7, 0.75, 0.85, 1.0);
         rowY += 22;
+
+        if (isServer) {
+            if (!zombie.network.GameClient.client || zombie.network.GameClient.connection == null) {
+                textMgr.DrawString(FONT_DATA, lx, rowY, "STATUS: Available only when connected to a Multiplayer Server", 0.9, 0.8, 0.4, 1.0);
+                return;
+            }
+            List<ModDataMonitor.ModDataEntry> srvEntries = ServerModDataMonitor.getEntries();
+            if (srvEntries.isEmpty()) {
+                String waitMsg = ServerModDataMonitor.hasReceivedData
+                    ? "(No significant GlobalModData activity recorded on server)"
+                    : "(Waiting for server GlobalModData data...)";
+                textMgr.DrawString(FONT_DATA, lx, rowY, waitMsg, 0.6, 0.6, 0.6, 1.0);
+                return;
+            }
+            int count = 0;
+            for (ModDataMonitor.ModDataEntry e : srvEntries) {
+                if (++count > 15) break;
+                String prefix = e.isTx ? "[TX]" : "[RX]";
+                String line = String.format(java.util.Locale.US,
+                    "%-4s  %-22s  %3d/min (%4.1f/s)    %9s    %9s  (%d)",
+                    prefix, e.tag, e.getCountLastMinute(), e.getRatePerSecond(),
+                    ModDataMonitor.formatBytes(e.lastBytes), ModDataMonitor.formatBytes(e.totalBytes), e.totalCount);
+
+                double r = e.isTx ? 0.35 : 0.4;
+                double g = e.isTx ? 0.85 : 1.0;
+                double b = e.isTx ? 1.0 : 0.45;
+                textMgr.DrawString(FONT_DATA, lx, rowY, line, r, g, b, 1.0);
+                rowY += 20;
+            }
+            return;
+        }
 
         List<ModDataMonitor.ModDataEntry> entries = ModDataMonitor.getEntries(mode);
         if (entries.isEmpty()) {
@@ -936,12 +992,46 @@ public class UnifiedPerfUI {
     private static void renderCommandList(TextManager textMgr, int lx, int rowY) {
         int mode = ZBGamePerf.commandOsdMode;
         if (mode == 0) mode = 1;
+        boolean isServer = ServerCommandMonitor.isServerSource();
+        String srvTag = isServer ? " [SERVER]" : "";
 
-        String header = (mode == 2) ? "DIR   MODULE:COMMAND (TX ONLY)     RATE/MIN (RATE/S)   LAST SIZE    TOTAL BYTES  (PKTS)"
-                      : (mode == 3) ? "DIR   MODULE:COMMAND (RX ONLY)     RATE/MIN (RATE/S)   LAST SIZE    TOTAL BYTES  (PKTS)"
-                      :               "DIR   MODULE:COMMAND               RATE/MIN (RATE/S)   LAST SIZE    TOTAL BYTES  (PKTS)";
+        String header = (mode == 2) ? "DIR   MODULE:COMMAND (TX ONLY)     RATE/MIN (RATE/S)   LAST SIZE    TOTAL BYTES  (PKTS)" + srvTag
+                      : (mode == 3) ? "DIR   MODULE:COMMAND (RX ONLY)     RATE/MIN (RATE/S)   LAST SIZE    TOTAL BYTES  (PKTS)" + srvTag
+                      :               "DIR   MODULE:COMMAND               RATE/MIN (RATE/S)   LAST SIZE    TOTAL BYTES  (PKTS)" + srvTag;
         textMgr.DrawString(FONT_DATA, lx, rowY, header, 0.7, 0.75, 0.85, 1.0);
         rowY += 22;
+
+        if (isServer) {
+            if (!zombie.network.GameClient.client || zombie.network.GameClient.connection == null) {
+                textMgr.DrawString(FONT_DATA, lx, rowY, "STATUS: Available only when connected to a Multiplayer Server", 0.9, 0.8, 0.4, 1.0);
+                return;
+            }
+            List<CommandMonitor.CommandEntry> srvEntries = ServerCommandMonitor.getEntries();
+            if (srvEntries.isEmpty()) {
+                String waitMsg = ServerCommandMonitor.hasReceivedData
+                    ? "(No significant Client/Server Commands recorded on server)"
+                    : "(Waiting for server Commands data...)";
+                textMgr.DrawString(FONT_DATA, lx, rowY, waitMsg, 0.6, 0.6, 0.6, 1.0);
+                return;
+            }
+            int count = 0;
+            for (CommandMonitor.CommandEntry e : srvEntries) {
+                if (++count > 15) break;
+                String prefix = e.isTx ? "[TX]" : "[RX]";
+                String target = e.module + ":" + e.command;
+                String line = String.format(java.util.Locale.US,
+                    "%-4s  %-26s  %3d/min (%4.1f/s)    %9s    %9s  (%d)",
+                    prefix, target, e.getCountLastMinute(), e.getRatePerSecond(),
+                    ModDataMonitor.formatBytes(e.lastBytes), ModDataMonitor.formatBytes(e.totalBytes), e.totalCount);
+
+                double r = e.isTx ? 0.35 : 0.4;
+                double g = e.isTx ? 0.85 : 1.0;
+                double b = e.isTx ? 1.0 : 0.45;
+                textMgr.DrawString(FONT_DATA, lx, rowY, line, r, g, b, 1.0);
+                rowY += 20;
+            }
+            return;
+        }
 
         List<CommandMonitor.CommandEntry> entries = CommandMonitor.getEntries(mode);
         if (entries.isEmpty()) {
@@ -970,12 +1060,50 @@ public class UnifiedPerfUI {
     private static void renderLgsList(TextManager textMgr, int lx, int rowY) {
         int mode = ZBGamePerf.loadGridSquareOsdMode;
         if (mode == 0) mode = 1;
+        boolean isServer = ServerLgsMonitor.isServerSource();
+        String srvTag = isServer ? " [SERVER]" : "";
 
-        String header = (mode == 2) ? "ORIGIN      LOCATION:LINE                   CALLS (RATE/S)   TOTAL TIME    AVG TIME    MAX SPIKE (TOTAL TIME)"
-                      : (mode == 3) ? "ORIGIN      LOCATION:LINE                   CALLS (RATE/S)   TOTAL TIME    AVG TIME    MAX SPIKE (MOST CALLS)"
-                      :               "ORIGIN      LOCATION:LINE                   CALLS (RATE/S)   TOTAL TIME    AVG TIME    MAX SPIKE (RECENT)";
+        String header = (mode == 2) ? "ORIGIN      LOCATION:LINE                   CALLS (RATE/S)   TOTAL TIME    AVG TIME    MAX SPIKE (TOTAL TIME)" + srvTag
+                      : (mode == 3) ? "ORIGIN      LOCATION:LINE                   CALLS (RATE/S)   TOTAL TIME    AVG TIME    MAX SPIKE (MOST CALLS)" + srvTag
+                      :               "ORIGIN      LOCATION:LINE                   CALLS (RATE/S)   TOTAL TIME    AVG TIME    MAX SPIKE (RECENT)" + srvTag;
         textMgr.DrawString(FONT_DATA, lx, rowY, header, 0.7, 0.75, 0.85, 1.0);
         rowY += 22;
+
+        if (isServer) {
+            if (!zombie.network.GameClient.client || zombie.network.GameClient.connection == null) {
+                textMgr.DrawString(FONT_DATA, lx, rowY, "STATUS: Available only when connected to a Multiplayer Server", 0.9, 0.8, 0.4, 1.0);
+                return;
+            }
+            List<ServerLgsMonitor.FormattedLgsEntry> srvEntries = ServerLgsMonitor.getEntries();
+            if (srvEntries.isEmpty()) {
+                String waitMsg = ServerLgsMonitor.hasReceivedData
+                    ? "(No significant LoadGridSquare activity recorded on server)"
+                    : "(Waiting for server LoadGridSquare data...)";
+                textMgr.DrawString(FONT_DATA, lx, rowY, waitMsg, 0.6, 0.6, 0.6, 1.0);
+                return;
+            }
+            int count = 0;
+            for (ServerLgsMonitor.FormattedLgsEntry e : srvEntries) {
+                if (++count > 15) break;
+                String line = String.format(java.util.Locale.US,
+                    "%-10s  %-30s  %6d (%4.1f/s)   %7.1fms    %6.1fus    %6.1fms",
+                    e.prefix, e.loc, e.totalCount, e.ratePerSec, e.totalMs, e.avgUs, e.maxMs);
+
+                double r, g, b;
+                if (e.totalCount == 0) {
+                    r = 0.5; g = 0.8; b = 0.7;
+                } else if (e.totalMs >= 50.0 || e.maxMs >= 10.0) {
+                    r = 1.0; g = 0.4; b = 0.4;
+                } else if (e.totalMs >= 10.0 || e.totalCount >= 500) {
+                    r = 1.0; g = 0.85; b = 0.3;
+                } else {
+                    r = 0.4; g = 1.0; b = 0.5;
+                }
+                textMgr.DrawString(FONT_DATA, lx, rowY, line, r, g, b, 1.0);
+                rowY += 20;
+            }
+            return;
+        }
 
         List<LoadGridSquareMonitor.CallbackEntry> entries = LoadGridSquareMonitor.getEntries(mode);
         if (entries.isEmpty()) {
@@ -1319,15 +1447,31 @@ public class UnifiedPerfUI {
     }
 
     private static void renderPoolsList(TextManager textMgr, int lx, int rowY) {
-        ServerNetMonitor.PoolsSnapshot snap = ServerNetMonitor.getPoolsSnapshot();
+        boolean isServer = ServerPoolsMonitor.isServerSource();
+        ServerNetMonitor.PoolsSnapshot snap = isServer ? ServerPoolsMonitor.getPoolsSnapshot() : ServerNetMonitor.getPoolsSnapshot();
+        String srvTag = isServer ? " [SERVER]" : "";
 
         textMgr.DrawString(FONT_DATA, lx, rowY,
-            "POOL OBJECT TYPE                               IN USE      FREE     TOTAL     REUSED (CACHE)   NEW ALLOCS", 0.7, 0.75, 0.85, 1.0);
+            "POOL OBJECT TYPE                               IN USE      FREE     TOTAL     REUSED (CACHE)   NEW ALLOCS" + srvTag, 0.7, 0.75, 0.85, 1.0);
         rowY += 22;
 
-        if (snap.items.isEmpty()) {
-            textMgr.DrawString(FONT_DATA, lx, rowY, "(No Object Pools registered)", 0.6, 0.6, 0.6, 1.0);
-            return;
+        if (isServer) {
+            if (!zombie.network.GameClient.client || zombie.network.GameClient.connection == null) {
+                textMgr.DrawString(FONT_DATA, lx, rowY, "STATUS: Available only when connected to a Multiplayer Server", 0.9, 0.8, 0.4, 1.0);
+                return;
+            }
+            if (snap.items.isEmpty()) {
+                String waitMsg = ServerPoolsMonitor.hasReceivedData
+                    ? "(No Object Pools registered on server)"
+                    : "(Waiting for server Object Pools data...)";
+                textMgr.DrawString(FONT_DATA, lx, rowY, waitMsg, 0.6, 0.6, 0.6, 1.0);
+                return;
+            }
+        } else {
+            if (snap.items.isEmpty()) {
+                textMgr.DrawString(FONT_DATA, lx, rowY, "(No Object Pools registered)", 0.6, 0.6, 0.6, 1.0);
+                return;
+            }
         }
 
         List<ServerNetMonitor.PoolItem> list = new ArrayList<>(snap.items);

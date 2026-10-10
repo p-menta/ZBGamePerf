@@ -108,6 +108,7 @@ public class CommandMonitor {
     private static final long[] secondTxBytes = new long[60];
     private static final long[] secondRxBytes = new long[60];
     private static long lastCmdSecond = 0;
+    public static volatile boolean serverProfilingActive = false;
 
     public static synchronized void recordTx(String module, String command, int bytes) {
         final String m = (module == null || module.isEmpty()) ? "Unknown" : module;
@@ -211,5 +212,28 @@ public class CommandMonitor {
         } catch (Throwable t) {
             return new String[] { "Unknown", "Unknown" };
         }
+    }
+
+    public static synchronized String packEntries(int mode, int topN) {
+        long sec = System.currentTimeMillis() / 1000L;
+        advanceGlobalSecond(sec);
+        long txB = secondTxBytes[(int)(sec % 60)];
+        long rxB = secondRxBytes[(int)(sec % 60)];
+        StringBuilder sb = new StringBuilder();
+        sb.append(txB).append(';').append(rxB).append('\n');
+        List<CommandEntry> list = getEntries(mode);
+        int count = 0;
+        for (CommandEntry e : list) {
+            if (++count > topN) break;
+            sb.append(e.module).append('\t')
+              .append(e.command).append('\t')
+              .append(e.isTx ? '1' : '0').append('\t')
+              .append(e.getCountLastMinute()).append('\t')
+              .append(String.format(java.util.Locale.US, "%.1f", e.getRatePerSecond())).append('\t')
+              .append(e.lastBytes).append('\t')
+              .append(e.totalBytes).append('\t')
+              .append(e.totalCount).append('\n');
+        }
+        return sb.toString();
     }
 }

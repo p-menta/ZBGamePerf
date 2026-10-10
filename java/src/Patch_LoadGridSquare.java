@@ -9,7 +9,7 @@ public class Patch_LoadGridSquare {
     public static class Patch_Event_trigger {
         @Patch.OnEnter
         public static void enter(@Patch.This Event self, @Patch.Local("isLGS") boolean isLGS, @Patch.Local("startNs") long startNs) {
-            if (!ZBGamePerf.loadGridSquareOsdEnabled) return;
+            if (!ZBGamePerf.loadGridSquareOsdEnabled && !LoadGridSquareMonitor.serverProfilingActive) return;
             if (self != null && "LoadGridsquare".equalsIgnoreCase(self.name)) {
                 isLGS = true;
                 startNs = System.nanoTime();
@@ -30,14 +30,14 @@ public class Patch_LoadGridSquare {
     public static class Patch_MapObjects_loadGridSquare {
         @Patch.OnEnter
         public static void enter(@Patch.Local("startNs") long startNs) {
-            if (!ZBGamePerf.loadGridSquareOsdEnabled) return;
+            if (!ZBGamePerf.loadGridSquareOsdEnabled && !LoadGridSquareMonitor.serverProfilingActive) return;
             startNs = System.nanoTime();
             LoadGridSquareMonitor.onEnterEvent();
         }
 
         @Patch.OnExit
         public static void exit(@Patch.Local("startNs") long startNs) {
-            if (!ZBGamePerf.loadGridSquareOsdEnabled) return;
+            if (!ZBGamePerf.loadGridSquareOsdEnabled && !LoadGridSquareMonitor.serverProfilingActive) return;
             long duration = System.nanoTime() - startNs;
             LoadGridSquareMonitor.onExitEvent(duration);
         }
