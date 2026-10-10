@@ -13,7 +13,7 @@ public class CommandPingMonitor {
     public static volatile double avgRoundTripMs = -1.0;
     public static volatile int totalPongs = 0;
     private static long sumRoundTripMs = 0;
-    public static volatile String status = "Nao testado";
+    public static volatile String status = "Not tested";
 
     // ponytail: 5s timeout heuristic for server response under heavy tick stall; upgrade path is configurable sandbox option
     private static final long TIMEOUT_MS = 5000L;
@@ -24,18 +24,18 @@ public class CommandPingMonitor {
         }
         try {
             if (!GameClient.client || GameClient.connection == null) {
-                status = "Requer Servidor Multiplayer";
+                status = "Requires Multiplayer Server";
                 return;
             }
             IsoPlayer player = IsoPlayer.getInstance();
             lastSentMs = System.currentTimeMillis();
             isWaiting = true;
             timedOut = false;
-            status = "Aguardando Pong...";
+            status = "Waiting for Pong...";
             GameClient.instance.sendClientCommand(player, "ZBGamePerf", "Ping", (se.krka.kahlua.vm.KahluaTable) null);
         } catch (Throwable t) {
             isWaiting = false;
-            status = "Erro ao enviar ping";
+            status = "Error sending ping";
         }
     }
 
@@ -78,6 +78,6 @@ public class CommandPingMonitor {
         avgRoundTripMs = -1.0;
         totalPongs = 0;
         sumRoundTripMs = 0;
-        status = "Nao testado";
+        status = "Not tested";
     }
 }

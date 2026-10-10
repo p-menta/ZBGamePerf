@@ -59,6 +59,7 @@ public class SelfCheck {
         assert !CommandPingMonitor.isWaiting : "isWaiting should be false after reset";
         assert CommandPingMonitor.lastRoundTripMs == -1 : "lastRoundTripMs should be -1 after reset";
         assert CommandPingMonitor.totalPongs == 0 : "totalPongs should be 0 after reset";
+        assert "Not tested".equals(CommandPingMonitor.status) : "status should be 'Not tested'";
 
         CommandPingMonitor.isWaiting = true;
         CommandPingMonitor.lastSentMs = System.currentTimeMillis() - 50;
