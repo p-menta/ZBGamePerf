@@ -38,14 +38,33 @@ This fork extends the original ZBGamePerf with dedicated server profiling, unifi
 3. Enable `ZBGamePerf` in the Mods menu in-game.
 
 ### Dedicated Server (Linux / Windows)
-1. Copy `ZombieBuddy.jar` and `ZBGamePerf.jar` to your server's `Project Zomboid Dedicated Server/java/` directory.
-2. In your server startup config (`ProjectZomboid64.json` on Linux, or server batch file):
-   - Add the `-javaagent` argument:
-     ```
-     -javaagent:java/ZombieBuddy.jar=patches_jar=java/ZBGamePerf.jar:me.p_menta.zb_game_perf
-     ```
-   - Ensure `ZBGamePerf.jar` and `ZombieBuddy.jar` are included in the classpath (`-Djava.class.path=...`).
-3. Start the server.
+1. **JAR Placement**:
+   Copy `ZombieBuddy.jar` and `ZBGamePerf.jar` into the server's `java/` folder:
+   ```
+   <Server Root>/Project Zomboid Dedicated Server/java/ZombieBuddy.jar
+   <Server Root>/Project Zomboid Dedicated Server/java/ZBGamePerf.jar
+   ```
+
+2. **Server Configuration (`ProjectZomboid64.json`)**:
+   Add the `-javaagent` to `vmArgs` and include both JARs in the classpath:
+   ```json
+   {
+     "mainClass": "zombie/network/GameServer",
+     "classpath": [
+       "java/ZombieBuddy.jar",
+       "java/ZBGamePerf.jar"
+     ],
+     "vmArgs": [
+       "-Djava.class.path=java/ZombieBuddy.jar:java/ZBGamePerf.jar",
+       "-javaagent:java/ZombieBuddy.jar=patches_jar=java/ZBGamePerf.jar:me.p_menta.zb_game_perf",
+       "-Djava.awt.headless=true",
+       "-Xmx8192m"
+     ]
+   }
+   ```
+
+3. **Start the server**:
+   Start normally. In-game, open the UI (`Ctrl+F11`) and switch to `[SERVER]` on any tab to inspect real-time metrics.
 
 ---
 
