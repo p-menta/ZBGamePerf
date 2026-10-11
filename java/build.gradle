@@ -77,6 +77,11 @@ tasks.register('deploy', Copy) {
     into modsTarget
 }
 
+tasks.register('signZbs', Exec) {
+    dependsOn deploy
+    commandLine 'python', "${projectDir}/sign_zbs.py"
+}
+
 tasks.named('build') {
-    finalizedBy('deploy')
+    finalizedBy('deploy', 'signZbs')
 }
