@@ -46,21 +46,16 @@ This fork extends the original ZBGamePerf with dedicated server profiling, unifi
    ```
 
 2. **Server Configuration (`ProjectZomboid64.json`)**:
-   Add the `-javaagent` to `vmArgs` and include both JARs in the classpath:
+   In your server root `ProjectZomboid64.json`, ensure the `classpath` and `vmArgs` include:
    ```json
-   {
-     "mainClass": "zombie/network/GameServer",
      "classpath": [
+       "java/.",
        "java/ZombieBuddy.jar",
-       "java/ZBGamePerf.jar"
+       "java/ZBGamePerf.jar",
+       "java/projectzomboid.jar"
      ],
      "vmArgs": [
-       "-Djava.class.path=java/ZombieBuddy.jar:java/ZBGamePerf.jar",
        "-javaagent:java/ZombieBuddy.jar=patches_jar=java/ZBGamePerf.jar:me.p_menta.zb_game_perf",
-       "-Djava.awt.headless=true",
-       "-Xmx8192m"
-     ]
-   }
    ```
 
 3. **Start the server**:
