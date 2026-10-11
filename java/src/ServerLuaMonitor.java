@@ -38,7 +38,7 @@ public class ServerLuaMonitor {
         if (!GameClient.client || GameClient.connection == null) {
             return;
         }
-        if (UnifiedPerfUI.activeTab != 0 || !UnifiedPerfUI.isOpen) {
+        if (!UnifiedPerfUI.isOpen || (!UnifiedPerfUI.profileAllTabs && UnifiedPerfUI.activeTab != 0)) {
             return;
         }
 

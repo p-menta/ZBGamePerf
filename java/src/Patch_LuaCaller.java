@@ -17,7 +17,7 @@ public class Patch_LuaCaller {
         PerformanceMonitor.checkAndLogStatistics();
     }
 
-    private static boolean shouldGatherStatistics() {
+    public static boolean shouldGatherStatistics() {
         // Gather statistics if:
         // - OSD is enabled (for display), OR
         // - Logging is enabled (for console output)

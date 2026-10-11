@@ -491,10 +491,16 @@ public class UnifiedPerfUI {
 
         // Close button [X]
         int closeX = winX + WIN_W - 28;
-        boolean closeHover = (mx >= closeX && mx <= closeX + 22 && my >= winY + 4 && my <= winY + 26);
+        int closeY = winY + 4;
+        int closeSize = 22;
+        boolean closeHover = (mx >= closeX && mx <= closeX + closeSize && my >= closeY && my <= closeY + closeSize);
         float cr = closeHover ? 0.70f : 0.50f;
-        SpriteRenderer.instance.renderRect(closeX, winY + 4, 22, 22, cr, 0.15f, 0.15f, 0.9f);
-        textMgr.DrawString(FONT_UI, closeX + 7, winY + 3, "X", 1.0, 1.0, 1.0, 1.0);
+        SpriteRenderer.instance.renderRect(closeX, closeY, closeSize, closeSize, cr, 0.15f, 0.15f, 0.9f);
+        int textW = textMgr.MeasureStringX(FONT_UI, "X");
+        int textH = textMgr.MeasureStringY(FONT_UI, "X");
+        int textX = closeX + (closeSize - textW) / 2;
+        int textY = closeY + (closeSize - textH) / 2;
+        textMgr.DrawString(FONT_UI, textX, textY, "X", 1.0, 1.0, 1.0, 1.0);
     }
 
     private static void renderGraph(TextManager textMgr) {
@@ -1063,9 +1069,9 @@ public class UnifiedPerfUI {
         boolean isServer = ServerLgsMonitor.isServerSource();
         String srvTag = isServer ? " [SERVER]" : "";
 
-        String header = (mode == 2) ? "ORIGIN      LOCATION:LINE                   CALLS (RATE/S)   TOTAL TIME    AVG TIME    MAX SPIKE (TOTAL TIME)" + srvTag
-                      : (mode == 3) ? "ORIGIN      LOCATION:LINE                   CALLS (RATE/S)   TOTAL TIME    AVG TIME    MAX SPIKE (MOST CALLS)" + srvTag
-                      :               "ORIGIN      LOCATION:LINE                   CALLS (RATE/S)   TOTAL TIME    AVG TIME    MAX SPIKE (RECENT)" + srvTag;
+        String header = (mode == 2) ? "ORIGIN  LOCATION:LINE                                           CALLS (RATE/S)   TOTAL TIME    AVG TIME    MAX SPIKE (TOTAL TIME)" + srvTag
+                      : (mode == 3) ? "ORIGIN  LOCATION:LINE                                           CALLS (RATE/S)   TOTAL TIME    AVG TIME    MAX SPIKE (MOST CALLS)" + srvTag
+                      :               "ORIGIN  LOCATION:LINE                                           CALLS (RATE/S)   TOTAL TIME    AVG TIME    MAX SPIKE (RECENT)" + srvTag;
         textMgr.DrawString(FONT_DATA, lx, rowY, header, 0.7, 0.75, 0.85, 1.0);
         rowY += 22;
 
@@ -1085,9 +1091,10 @@ public class UnifiedPerfUI {
             int count = 0;
             for (ServerLgsMonitor.FormattedLgsEntry e : srvEntries) {
                 if (++count > 15) break;
+                String displayLoc = e.loc != null && e.loc.length() > 46 ? e.loc.substring(0, 43) + "..." : e.loc;
                 String line = String.format(java.util.Locale.US,
-                    "%-10s  %-30s  %6d (%4.1f/s)   %7.1fms    %6.1fus    %6.1fms",
-                    e.prefix, e.loc, e.totalCount, e.ratePerSec, e.totalMs, e.avgUs, e.maxMs);
+                    "%-6s  %-46s  %6d (%4.1f/s)   %7.1fms    %6.1fus    %6.1fms",
+                    e.prefix, displayLoc, e.totalCount, e.ratePerSec, e.totalMs, e.avgUs, e.maxMs);
 
                 double r, g, b;
                 if (e.totalCount == 0) {
@@ -1119,10 +1126,11 @@ public class UnifiedPerfUI {
             double avgUs = e.totalCount > 0 ? (e.totalDurationNs / 1_000.0) / e.totalCount : 0.0;
             double maxMs = e.maxDurationNs / 1_000_000.0;
 
-            String loc = e.info.relativePath + ":" + e.info.line;
+            String loc = e.info.getFormattedLocation();
+            String displayLoc = loc.length() > 46 ? loc.substring(0, 43) + "..." : loc;
             String line = String.format(java.util.Locale.US,
-                "%-10s  %-30s  %6d (%4.1f/s)   %7.1fms    %6.1fus    %6.1fms",
-                prefixStr, loc, e.totalCount, e.getRatePerSecond(), totalMs, avgUs, maxMs);
+                "%-6s  %-46s  %6d (%4.1f/s)   %7.1fms    %6.1fus    %6.1fms",
+                prefixStr, displayLoc, e.totalCount, e.getRatePerSecond(), totalMs, avgUs, maxMs);
 
             double r, g, b;
             if (e.totalCount == 0) {

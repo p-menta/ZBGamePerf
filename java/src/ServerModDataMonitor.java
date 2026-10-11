@@ -31,7 +31,7 @@ public class ServerModDataMonitor {
     public static synchronized void update() {
         if (activeSource != SOURCE_SERVER) return;
         if (!GameClient.client || GameClient.connection == null) return;
-        if (UnifiedPerfUI.activeTab != 1 || !UnifiedPerfUI.isOpen) return;
+        if (!UnifiedPerfUI.isOpen || (!UnifiedPerfUI.profileAllTabs && UnifiedPerfUI.activeTab != 1)) return;
 
         // ponytail: 1-second cadence prevents RakNet packet congestion
         long now = System.currentTimeMillis();

@@ -393,7 +393,9 @@ public class PerformanceMonitor {
 
     public static String packTopCalls(int mode, int topN) {
         int prevMode = ZBGamePerf.osdMode;
+        double prevMinTime = ZBGamePerf.osdMinTimeMS;
         ZBGamePerf.osdMode = (mode >= 1 && mode <= 3) ? mode : 1;
+        ZBGamePerf.osdMinTimeMS = 0.001; // Ensure sub-0.1ms server Lua calls are retained in payload
         try {
             java.util.List<PerfRenderer.FormattedCall> calls = PerfRenderer.getTopCalls(topN, 1000);
             long[] history = getHistory();
@@ -412,6 +414,7 @@ public class PerformanceMonitor {
             return sb.toString();
         } finally {
             ZBGamePerf.osdMode = prevMode;
+            ZBGamePerf.osdMinTimeMS = prevMinTime;
         }
     }
 }

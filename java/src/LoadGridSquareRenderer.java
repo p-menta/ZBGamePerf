@@ -95,7 +95,7 @@ public class LoadGridSquareRenderer {
                     double maxMs = entry.maxDurationNs / 1_000_000.0;
                     double ratePerSec = entry.getRatePerSecond();
 
-                    String location = entry.info.relativePath + ":" + entry.info.line;
+                    String location = entry.info.getFormattedLocation();
                     String line = String.format(java.util.Locale.US,
                         "  %-10s %-32s : %6d calls (%4.1f/s) | Total: %6.1fms | Avg: %5.1fus | Max: %5.1fms",
                         prefixStr, location, entry.totalCount, ratePerSec, totalMs, avgUs, maxMs);

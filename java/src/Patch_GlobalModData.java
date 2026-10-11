@@ -33,19 +33,18 @@ public class Patch_GlobalModData {
     @Patch(className = "zombie.network.packets.service.GlobalModDataPacket", methodName = "parse")
     public static class Patch_parse {
         @Patch.OnEnter
-        public static void enter(@Patch.Argument(0) ByteBufferReader b, @Patch.Local("startPos") int startPos) {
-            startPos = (b != null && b.bb != null) ? b.bb.position() : 0;
-        }
-
-        @Patch.OnExit
-        public static void exit(@Patch.Argument(0) ByteBufferReader b, @Patch.Argument(1) IConnection connection, @Patch.Local("startPos") int startPos) {
+        public static void enter(@Patch.Argument(0) ByteBufferReader b) {
             if ((!ZBGamePerf.modDataOsdEnabled && !ModDataMonitor.serverProfilingActive) || b == null || b.bb == null) {
                 return;
             }
             try {
-                int bytes = Math.max(0, b.bb.position() - startPos);
-                String tag = ModDataMonitor.peekTag(b.bb, startPos);
-                ModDataMonitor.recordRx(tag, bytes);
+                int pos = b.bb.position();
+                int totalBytes = b.bb.remaining();
+                java.nio.ByteBuffer dup = b.bb.duplicate();
+                dup.position(pos);
+                ByteBufferReader r = new ByteBufferReader(dup);
+                String tag = r.getUTF();
+                ModDataMonitor.recordRx(tag, totalBytes);
             } catch (Throwable ignored) {
             }
         }

@@ -228,7 +228,7 @@ public class LoadGridSquareMonitor {
         for (CallbackEntry e : list) {
             if (++count > topN) break;
             String prefixStr = e.info.prefix != null ? e.info.prefix.toString() : "[UNK]";
-            String loc = e.info.relativePath + ":" + e.info.line;
+            String loc = e.info.getFormattedLocation();
             double totalMs = e.totalDurationNs / 1_000_000.0;
             double avgUs = e.totalCount > 0 ? (e.totalDurationNs / 1_000.0) / e.totalCount : 0.0;
             double maxMs = e.maxDurationNs / 1_000_000.0;

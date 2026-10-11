@@ -9,7 +9,10 @@ public class Patch_Commands {
     @Patch(className = "zombie.network.GameClient", methodName = "sendClientCommand")
     public static class Patch_GameClient_sendClientCommand {
         @Patch.OnExit
-        public static void exit(@Patch.Argument(1) String module, @Patch.Argument(2) String command) {
+        public static void exit(@Patch.Argument(0) zombie.characters.IsoPlayer player,
+                                @Patch.Argument(1) String module,
+                                @Patch.Argument(2) String command,
+                                @Patch.Argument(3) se.krka.kahlua.vm.KahluaTable args) {
             if (!ZBGamePerf.commandOsdEnabled) {
                 return;
             }
@@ -27,46 +30,49 @@ public class Patch_Commands {
     @Patch(className = "zombie.network.GameClient", methodName = "receiveClientCommand")
     public static class Patch_GameClient_receiveClientCommand {
         @Patch.OnEnter
-        public static void enter(@Patch.Argument(0) ByteBufferReader bb, @Patch.Local("startPos") int startPos) {
-            startPos = (bb != null && bb.bb != null) ? bb.bb.position() : 0;
-        }
-
-        @Patch.OnExit
-        public static void exit(@Patch.Argument(0) ByteBufferReader bb, @Patch.Local("startPos") int startPos) {
+        public static void enter(@Patch.Argument(0) ByteBufferReader bb,
+                                @Patch.Argument(1) short packetType) {
             if (bb == null || bb.bb == null) {
                 return;
             }
             try {
-                String[] mc = CommandMonitor.peekModuleCommand(bb.bb, startPos);
-                if ("ZBGamePerf".equals(mc[0])) {
-                    String cmd = mc[1];
-                    if ("Pong".equals(cmd)) {
+                int pos = bb.bb.position();
+                int totalBytes = bb.bb.remaining();
+                java.nio.ByteBuffer dup = bb.bb.duplicate();
+                dup.position(pos);
+                ByteBufferReader r = new ByteBufferReader(dup);
+                String module = r.getUTF();
+                String command = r.getUTF();
+                if ("ZBGamePerf".equals(module)) {
+                    if ("Pong".equals(command)) {
                         CommandPingMonitor.onPongReceived();
-                    } else if ("ResLuaCalls".equals(cmd)) {
-                        String data = unpackDataString(bb.bb, startPos);
-                        if (data != null) ServerLuaMonitor.onDataReceived(data);
-                    } else if ("ResModData".equals(cmd)) {
-                        String data = unpackDataString(bb.bb, startPos);
-                        if (data != null) ServerModDataMonitor.onDataReceived(data);
-                    } else if ("ResCommands".equals(cmd)) {
-                        String data = unpackDataString(bb.bb, startPos);
-                        if (data != null) ServerCommandMonitor.onDataReceived(data);
-                    } else if ("ResLgs".equals(cmd)) {
-                        String data = unpackDataString(bb.bb, startPos);
-                        if (data != null) ServerLgsMonitor.onDataReceived(data);
-                    } else if ("ResServerWorld".equals(cmd)) {
-                        String data = unpackDataString(bb.bb, startPos);
-                        if (data != null) ServerNetMonitor.onServerWorldReceived(data);
-                    } else if ("ResPools".equals(cmd)) {
-                        String data = unpackDataString(bb.bb, startPos);
-                        if (data != null) ServerPoolsMonitor.onDataReceived(data);
+                    } else if (r.bb != null && r.bb.remaining() > 0 && r.getBoolean()) {
+                        se.krka.kahlua.vm.KahluaTable table = zombie.Lua.LuaManager.platform.newTable();
+                        zombie.network.TableNetworkUtils.load(table, r);
+                        Object data = table.rawget("data");
+                        if (data instanceof String) {
+                            String dataStr = (String) data;
+                            if ("ResLuaCalls".equals(command)) {
+                                ServerLuaMonitor.onDataReceived(dataStr);
+                            } else if ("ResModData".equals(command)) {
+                                ServerModDataMonitor.onDataReceived(dataStr);
+                            } else if ("ResCommands".equals(command)) {
+                                ServerCommandMonitor.onDataReceived(dataStr);
+                            } else if ("ResLgs".equals(command)) {
+                                ServerLgsMonitor.onDataReceived(dataStr);
+                            } else if ("ResServerWorld".equals(command)) {
+                                ServerNetMonitor.onServerWorldReceived(dataStr);
+                            } else if ("ResPools".equals(command)) {
+                                ServerPoolsMonitor.onDataReceived(dataStr);
+                            }
+                        }
                     }
                 }
                 if (ZBGamePerf.commandOsdEnabled) {
-                    int bytes = Math.max(0, bb.bb.position() - startPos);
-                    CommandMonitor.recordRx(mc[0], mc[1], bytes);
+                    CommandMonitor.recordRx(module, command, totalBytes);
                 }
-            } catch (Throwable ignored) {
+            } catch (Throwable t) {
+                zombie.debug.DebugLog.log("[ZBGamePerf-Client] receiveClientCommand error: " + t);
             }
         }
     }
@@ -94,7 +100,9 @@ public class Patch_Commands {
     @Patch(className = "zombie.network.GameServer", methodName = "sendServerCommand")
     public static class Patch_GameServer_sendServerCommand {
         @Patch.OnExit
-        public static void exit(@Patch.Argument(0) String module, @Patch.Argument(1) String command,
+        public static void exit(@Patch.Argument(0) String module,
+                                @Patch.Argument(1) String command,
+                                @Patch.Argument(2) se.krka.kahlua.vm.KahluaTable args,
                                 @Patch.Argument(3) zombie.core.raknet.UdpConnection connection) {
             if (!CommandMonitor.serverProfilingActive) return;
             try {
@@ -111,7 +119,9 @@ public class Patch_Commands {
     @Patch(className = "zombie.network.GameServer", methodName = "receiveClientCommand")
     public static class Patch_GameServer_receiveClientCommand {
         @Patch.OnEnter
-        public static void enter(@Patch.Argument(0) ByteBufferReader bb, @Patch.Argument(1) zombie.core.raknet.UdpConnection connection) {
+        public static void enter(@Patch.Argument(0) ByteBufferReader bb,
+                                @Patch.Argument(1) zombie.core.raknet.UdpConnection connection,
+                                @Patch.Argument(2) short packetType) {
             if (bb == null || bb.bb == null || connection == null) {
                 return;
             }
@@ -121,6 +131,7 @@ public class Patch_Commands {
                     return;
                 }
                 int pos = bb.bb.position();
+                int totalBytes = bb.bb.remaining();
                 java.nio.ByteBuffer dup = bb.bb.duplicate();
                 dup.position(pos);
                 ByteBufferReader r = new ByteBufferReader(dup);
@@ -128,8 +139,7 @@ public class Patch_Commands {
                 String module = r.getUTF();
                 String command = r.getUTF();
                 if (CommandMonitor.serverProfilingActive) {
-                    int bytes = Math.max(0, bb.bb.position() - pos);
-                    CommandMonitor.recordRx(module, command, bytes);
+                    CommandMonitor.recordRx(module, command, totalBytes);
                 }
                 if ("ZBGamePerf".equals(module)) {
                     long now = System.currentTimeMillis();
@@ -170,36 +180,17 @@ public class Patch_Commands {
                         sendServerResponse("ResPools", payload, connection);
                     }
                 }
-            } catch (Throwable ignored) {
+            } catch (Throwable t) {
+                zombie.debug.DebugLog.log("[ZBGamePerf-Server] receiveClientCommand error: " + t);
             }
         }
     }
 
-    private static String unpackDataString(java.nio.ByteBuffer bb, int startPos) {
-        try {
-            java.nio.ByteBuffer dup = bb.duplicate();
-            dup.position(startPos);
-            ByteBufferReader r = new ByteBufferReader(dup);
-            r.getUTF(); // module
-            r.getUTF(); // command
-            if (r.getBoolean()) { // hasTable
-                se.krka.kahlua.vm.KahluaTable table = zombie.Lua.LuaManager.platform.newTable();
-                zombie.network.TableNetworkUtils.load(table, r);
-                Object data = table.rawget("data");
-                if (data instanceof String) {
-                    return (String) data;
-                }
-            }
-        } catch (Throwable ignored) {
-        }
-        return null;
-    }
-
-    private static int[] parseModeTopN(ByteBufferReader r, int defMode, int defTopN) {
+    public static int[] parseModeTopN(ByteBufferReader r, int defMode, int defTopN) {
         int reqMode = defMode;
         int topN = defTopN;
         try {
-            if (r.getBoolean()) {
+            if (r.bb != null && r.bb.remaining() > 0 && r.getBoolean()) {
                 se.krka.kahlua.vm.KahluaTable reqTable = zombie.Lua.LuaManager.platform.newTable();
                 zombie.network.TableNetworkUtils.load(reqTable, r);
                 Object mObj = reqTable.rawget("mode");
@@ -212,12 +203,13 @@ public class Patch_Commands {
         return new int[] { reqMode, topN };
     }
 
-    private static void sendServerResponse(String command, String payload, zombie.core.raknet.UdpConnection connection) {
+    public static void sendServerResponse(String command, String payload, zombie.core.raknet.UdpConnection connection) {
         try {
             se.krka.kahlua.vm.KahluaTable respTable = zombie.Lua.LuaManager.platform.newTable();
             respTable.rawset("data", payload != null ? payload : "");
             zombie.network.GameServer.sendServerCommand("ZBGamePerf", command, respTable, connection);
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
+            zombie.debug.DebugLog.log("[ZBGamePerf-Server] sendServerResponse error: " + t);
         }
     }
 
@@ -235,19 +227,15 @@ public class Patch_Commands {
     @Patch(className = "zombie.spnetwork.SinglePlayerClient", methodName = "receiveServerCommand")
     public static class Patch_SinglePlayerClient_receiveServerCommand {
         @Patch.OnEnter
-        public static void enter(@Patch.Argument(0) ByteBufferReader bb, @Patch.Local("startPos") int startPos) {
-            startPos = (bb != null && bb.bb != null) ? bb.bb.position() : 0;
-        }
-
-        @Patch.OnExit
-        public static void exit(@Patch.Argument(0) ByteBufferReader bb, @Patch.Local("startPos") int startPos) {
+        public static void enter(@Patch.Argument(0) ByteBufferReader bb) {
             if (!ZBGamePerf.commandOsdEnabled || bb == null || bb.bb == null) {
                 return;
             }
             try {
-                int bytes = Math.max(0, bb.bb.position() - startPos);
-                String[] mc = CommandMonitor.peekModuleCommand(bb.bb, startPos);
-                CommandMonitor.recordRx(mc[0], mc[1], bytes);
+                int pos = bb.bb.position();
+                int totalBytes = bb.bb.remaining();
+                String[] mc = CommandMonitor.peekModuleCommand(bb.bb, pos);
+                CommandMonitor.recordRx(mc[0], mc[1], totalBytes);
             } catch (Throwable ignored) {
             }
         }

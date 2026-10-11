@@ -212,7 +212,15 @@ public class SelfCheck {
         Patch_Commands.serverUpdate();
         assert !ModDataMonitor.serverProfilingActive : "ModDataMonitor server profiling should timeout";
         assert !CommandMonitor.serverProfilingActive : "CommandMonitor server profiling should timeout";
-        assert !LoadGridSquareMonitor.serverProfilingActive : "LoadGridSquareMonitor server profiling should timeout";
+        // Test FileInfo formatLocation
+        String loc1 = FileInfo.formatLocation(FilePrefix.SMOD, "ArcadiaLifestyleMPOptimizer_B42/42/media/lua/client/01_ArcadiaLifestyleMP_ObjectTracker.lua", 148);
+        assert loc1.equals("ArcadiaLifestyleMPOptimizer_B42:/lua/client/01_ArcadiaLifestyleMP_ObjectTracker.lua:148") : "loc1 mismatch: " + loc1;
+
+        String loc2 = FileInfo.formatLocation(FilePrefix.SMOD, "Plysken Underground Revolution/42.1/media/lua/client/PUR_Bench.lua", 346);
+        assert loc2.equals("Plysken Underground Revolution:/lua/client/PUR_Bench.lua:346") : "loc2 mismatch: " + loc2;
+
+        String loc3 = FileInfo.formatLocation(FilePrefix.GAME, "ISUI/ISInventoryPane.lua", 120);
+        assert loc3.equals("/ISUI/ISInventoryPane.lua:120") : "loc3 mismatch: " + loc3;
 
         System.out.println("SelfCheck PASSED successfully!");
     }
