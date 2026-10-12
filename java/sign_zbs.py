@@ -3,15 +3,20 @@ import hashlib
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.hazmat.primitives import serialization
 
-STEAM_ID = '76561198257681880'
+STEAM_ID = os.getenv('STEAM_ID', '76561198257681880')
 KEY_DIR = os.path.expanduser('~/.zombiebuddy')
-PRIV_KEY_PATH = os.path.join(KEY_DIR, 'zbs_ed25519_private.pem')
+PRIV_KEY_PATH = os.getenv('ZBS_PRIVATE_KEY', os.path.join(KEY_DIR, 'zbs_ed25519_private.pem'))
 
 if not os.path.exists(PRIV_KEY_PATH):
-    raise FileNotFoundError(f'Private key not found at {PRIV_KEY_PATH}')
+    print(f'[ZBS] Info: No private key found at {PRIV_KEY_PATH}. Skipping ZBS signing.')
+    exit(0)
 
-with open(PRIV_KEY_PATH, 'rb') as f:
-    private_key = serialization.load_pem_private_key(f.read(), password=None)
+try:
+    with open(PRIV_KEY_PATH, 'rb') as f:
+        private_key = serialization.load_pem_private_key(f.read(), password=None)
+except Exception as e:
+    print(f'[ZBS] Warning: Failed to load private key ({e}). Skipping ZBS signing.')
+    exit(0)
 
 jar_targets = [
     os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '42', 'media', 'java', 'client', 'ZBGamePerf.jar')),
