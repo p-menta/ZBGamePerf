@@ -222,6 +222,18 @@ public class SelfCheck {
         String loc3 = FileInfo.formatLocation(FilePrefix.GAME, "ISUI/ISInventoryPane.lua", 120);
         assert loc3.equals("/ISUI/ISInventoryPane.lua:120") : "loc3 mismatch: " + loc3;
 
+        // Test fmtKB and fmtPct formatting precision
+        assert UnifiedPerfUI.fmtKB(-1).equals("nil") : "fmtKB(-1) failed";
+        assert UnifiedPerfUI.fmtKB(0).equals("0.0") : "fmtKB(0) failed";
+        assert UnifiedPerfUI.fmtKB(74).equals("0.1") : "fmtKB(74) failed: " + UnifiedPerfUI.fmtKB(74);
+        assert UnifiedPerfUI.fmtKB(2210).equals("2.2") : "fmtKB(2210) failed: " + UnifiedPerfUI.fmtKB(2210);
+        assert UnifiedPerfUI.fmtKB(48937).equals("47.8") : "fmtKB(48937) failed: " + UnifiedPerfUI.fmtKB(48937);
+
+        assert UnifiedPerfUI.fmtPct(-1).equals("nil") : "fmtPct(-1) failed";
+        assert UnifiedPerfUI.fmtPct(0.0).equals("0.0%") : "fmtPct(0) failed";
+        assert UnifiedPerfUI.fmtPct(0.002212).equals("0.22%") : "fmtPct(0.002212) failed: " + UnifiedPerfUI.fmtPct(0.002212);
+        assert UnifiedPerfUI.fmtPct(0.05).equals("5.0%") : "fmtPct(0.05) failed: " + UnifiedPerfUI.fmtPct(0.05);
+
         System.out.println("SelfCheck PASSED successfully!");
     }
 }

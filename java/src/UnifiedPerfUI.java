@@ -676,9 +676,12 @@ public class UnifiedPerfUI {
                 ChunkDeliveryMonitor.syncPct);
         }
 
+        String lossStr = (currentLoss > 0.0 && currentLoss < 1.0)
+            ? String.format(java.util.Locale.US, "%.2f%%", currentLoss)
+            : String.format(java.util.Locale.US, "%.1f%%", currentLoss);
         String label = String.format(java.util.Locale.US,
-            "Ping: %dms (Avg: %dms, Peak: %dms) | Loss: %.1f%% | %s",
-            currentPing, avgPing, maxPing, currentLoss, chunkStatus);
+            "Ping: %dms (Avg: %dms, Peak: %dms) | Loss: %s | %s",
+            currentPing, avgPing, maxPing, lossStr, chunkStatus);
         textMgr.DrawString(FONT_UI, gx + 10, gy + 5, label, 0.35, 0.9, 1.0, 1.0);
 
         // On-Screen HUD Toggle button
@@ -1179,14 +1182,18 @@ public class UnifiedPerfUI {
         return String.format(java.util.Locale.US, "%d", (long) Math.floor(val));
     }
 
-    private static String fmtKB(double bytes) {
+    static String fmtKB(double bytes) {
         if (bytes < 0) return "nil";
-        return String.format(java.util.Locale.US, "%d", (long) Math.floor(bytes / 1024.0));
+        double kb = bytes / 1024.0;
+        return String.format(java.util.Locale.US, "%.1f", kb);
     }
 
-    private static String fmtPct(double pct) {
+    static String fmtPct(double pct) {
         if (pct < 0) return "nil";
-        return String.format(java.util.Locale.US, "%d", (long) Math.floor(pct * 100.0));
+        double p = pct * 100.0;
+        if (p <= 0.0) return "0.0%";
+        if (p < 1.0) return String.format(java.util.Locale.US, "%.2f%%", p);
+        return String.format(java.util.Locale.US, "%.1f%%", p);
     }
 
     private static void renderNetworkList(TextManager textMgr, int lx, int rowY) {
