@@ -1,4 +1,4 @@
-# ZBGamePerf
+﻿# ZBGamePerf
 
 High-performance real-time diagnostic and profiling suite for Project Zomboid (Build 42+), built on top of the ZombieBuddy bytecode instrumentation framework.
 
@@ -59,15 +59,15 @@ This fork extends the original ZBGamePerf with dedicated server profiling, unifi
    ```
 
 3. **Start the server**:
-   Start normally. In-game, open the UI (`Ctrl+F11`) and switch to `[SERVER]` on any tab to inspect real-time metrics.
+   Start normally. In-game, open any tab directly with `Ctrl + 1` through `Ctrl + 7` (or bind an open key in Options) and switch to `[SERVER]` on any tab to inspect real-time metrics.
 
 ---
 
 ## How to Use
 
 ### Hotkeys
-- **`Ctrl + F11`**: Toggle the Unified Performance Monitor UI open/closed.
-- **`Ctrl + 1` to `Ctrl + 7`**: Switch tabs directly.
+- **`Ctrl + 1` to `Ctrl + 7`**: Open / toggle specific tabs directly (pressing the current tab key again closes the UI).
+- **Options -> Keybindings**: You can also bind an optional dedicated toggle key under *Toggle ZBGamePerf OSD*.
 - **`Ctrl + P`**: Toggle profiling scope:
   - `ACTIVE TAB`: Profiles only the currently viewed tab (recommended for minimal overhead).
   - `ALL TABS`: Concurrently profiles all tabs.
